@@ -13,12 +13,13 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "base/Release metrics.md",
+                "file": "base/SDD - Spec Driven Development.md",
                 "mode": "source",
-                "source": false
+                "source": false,
+                "backlinks": false
               },
               "icon": "lucide-file",
-              "title": "Release metrics"
+              "title": "SDD - Spec Driven Development"
             }
           }
         ]
@@ -185,8 +186,9 @@
   },
   "active": "761944f8abd6c946",
   "lastOpenFiles": [
-    "base/Types of releases.md",
     "base/Release metrics.md",
+    "base/SDD - Spec Driven Development.md",
+    "base/Types of releases.md",
     "00 DevOps.md",
     "templates/New note.md",
     "Добро пожаловать.md",
