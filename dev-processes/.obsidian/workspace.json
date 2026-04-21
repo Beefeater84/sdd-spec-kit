@@ -184,8 +184,9 @@
       "bases:Создать новую базу": false
     }
   },
-  "active": "761944f8abd6c946",
+  "active": "39134def5a74eb8e",
   "lastOpenFiles": [
+    "specs",
     "base/Release metrics.md",
     "base/SDD - Spec Driven Development.md",
     "base/Types of releases.md",
