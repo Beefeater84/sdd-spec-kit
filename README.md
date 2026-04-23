@@ -4,6 +4,16 @@ Development standards, templates, and tools for project setup and feature delive
 
 ## SKILLS
 
+### `/sdd-init-legacy`
+
+Bootstraps an SDD constitution for an existing (legacy) project. **Run once per project.**
+
+**Usage:** `/sdd-init-legacy`
+
+The skill explores the codebase autonomously — README, TODO, package files, git log, migrations — and reverse-engineers the three constitution files (`specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md`). It only asks the user for context it cannot discover itself (audience, hidden constraints, team direction). After review and commit, the project is on an SDD foundation and ready for the standard feature workflow.
+
+---
+
 ### `/create-sdd-feature`
 
 Creates a feature spec file following the Spec-Driven Development (SDD) workflow.
