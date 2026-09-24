@@ -29,6 +29,43 @@ issue_url: https://github.com/Beefeater84/sdd-spec-kit/issues/1
 
 On failure: `status: error`, `id`, `reason`, `hint` (`-` if there is nothing to suggest).
 
+---
+
+### `feature-finisher`
+
+Last step of the SDD multi-agent flow (`.claude/agents/feature-finisher.md`, model `haiku`, tools: `Bash`). Runs after the feature PR is merged. It does not run tests.
+
+**Input:** task id and task branch, e.g. `Finish task 1, branch feat/1-feature-starter-agent`.
+
+The agent checks that the branch belongs to the task and its PR is merged; otherwise it changes nothing. Then it:
+1. closes the issue with a comment `Done in #<pr>` (needed because `Closes #N` does not fire on merges into `release/*`); for a sub-issue it reports the epic's progress but never closes the epic;
+2. sets the board Status to Done;
+3. fast-forwards the local latest `release/*` from `origin` (switches to it only if you are on the task branch);
+4. deletes the task branch locally and in `origin`, but only if its tip is exactly what was merged.
+
+Re-running is safe: completed steps are skipped.
+
+**Output:**
+
+```
+FEATURE_FINISHER_RESULT
+status: ok
+id: 1
+pr: 3
+branch: feat/1-feature-starter-agent
+base: release/0.1.0
+issue: already_closed
+epic: -
+board: already_done
+release: release/0.1.0
+release_state: up_to_date
+local_branch: absent
+remote_branch: deleted
+warnings: -
+```
+
+`status: partial` means something was kept on purpose (see `warnings`). On failure: `status: error`, `id`, `reason`, `hint`.
+
 ## SKILLS
 
 ### `/sdd-init-legacy`
