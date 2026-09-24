@@ -12,6 +12,8 @@ First step of the SDD multi-agent flow (`.claude/agents/feature-starter.md`, mod
 
 The agent fetches `origin`, picks the highest `origin/release/*` by version (`1.10` > `1.9`), checks it matches `origin`, and creates a local branch `<type>/<id>-<slug>` from it without upstream. It never pushes and never uses `main`/`master`. It stops if there is no `origin/release/*`, if the branch already exists, or if the working tree is dirty.
 
+Local `release/*` branches are never used as a base, but they are checked for unpushed work. If a local release is newer than every release in `origin`, or the local base branch is ahead of (or diverged from) `origin`, the agent stops and returns a `hint` with the command for a human to run (e.g. `git push -u origin release/1.11`). After that, run the agent again.
+
 **Output** (fixed format for the next agents):
 
 ```
@@ -25,7 +27,7 @@ base_sha: acf3fac1b750c189c3426e56a5d57e6753269b53
 issue_url: https://github.com/Beefeater84/sdd-spec-kit/issues/1
 ```
 
-On failure: `status: error`, `id`, `reason`.
+On failure: `status: error`, `id`, `reason`, `hint` (`-` if there is nothing to suggest).
 
 ## SKILLS
 

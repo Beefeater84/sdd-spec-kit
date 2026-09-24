@@ -12,7 +12,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 ## Hard rules
 
 - Never use `main` or `master` as a base or a target. If no `origin/release/*` exists, STOP. Never fall back to `main`.
-- Only branches in `origin` count. Ignore local `release/*` branches.
+- Only branches in `origin` can be a base. Local `release/*` branches are only checked for unpushed work (Step 4, Step 5); if there is any, STOP and give the human a push command.
 - Never push. Never set an upstream. Never change or delete existing branches.
 - If the feature branch already exists (locally or in `origin`), STOP.
 - Never pick a release branch by commit date. Pick it by version.
@@ -92,8 +92,29 @@ git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/release/*' \
 ```
 
 - `sort -V` sorts by version, so `1.10` is above `1.9`.
-- If the output is empty, STOP with `reason: no release/* branch found in origin`.
 - `base` = `release/<output>`.
+
+Now find the highest **local** release the same way:
+
+```bash
+git for-each-ref --format='%(refname:strip=2)' 'refs/heads/release/*' \
+  | sed 's#^release/##' \
+  | grep -E '^v?[0-9]+(\.[0-9]+)*$' \
+  | sort -V \
+  | tail -n 1
+```
+
+Local branches are never used as a base. They are only checked, so a release that was not pushed is not missed:
+
+- If the origin output is empty and the local output is empty, STOP with `reason: no release/* branch found in origin`.
+- If the origin output is empty and the local output is `<L>`, STOP with `reason: local release/<L> is not in origin` and `hint: git push -u origin release/<L>`.
+- If both are set and differ, check which one is higher:
+
+  ```bash
+  printf '%s\n%s\n' "<origin version>" "<local version>" | sort -V | tail -n 1
+  ```
+
+  If it prints the local version, STOP with `reason: local release/<L> is not in origin` and `hint: git push -u origin release/<L>`.
 
 ## Step 5. Base is up to date with origin
 
@@ -105,6 +126,19 @@ git ls-remote --heads origin "<base>" | cut -f1
 ```
 
 If the two hashes differ, run `git fetch origin "<base>"` once and compare again. If they still differ, STOP with `reason: origin/<base> is out of sync with origin`.
+
+If a local `<base>` branch exists, it must not have unpushed commits:
+
+```bash
+git show-ref --verify --quiet "refs/heads/<base>" \
+  && git rev-list --left-right --count "origin/<base>...<base>"
+```
+
+It prints `<behind> <ahead>` (nothing if there is no local branch).
+
+- `ahead` is `0`: fine, go on (being behind is fine too).
+- `ahead` > `0` and `behind` is `0`: STOP with `reason: local <base> is <ahead> commits ahead of origin` and `hint: git push origin <base>`.
+- both > `0`: STOP with `reason: local <base> and origin/<base> have diverged` and `hint: reconcile <base> with origin/<base> manually`.
 
 ## Step 6. Branch must not exist
 
@@ -155,6 +189,9 @@ FEATURE_STARTER_RESULT
 status: error
 id: <id or ->
 reason: <one line, from the STOP message>
+hint: <command or action for the human, from the STOP message, or ->
 ```
 
 Use `-` for values that are not known yet. Keys and their order never change.
+
+You never run a `hint` yourself. It is for the human: they fix the state and run you again.
