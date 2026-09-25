@@ -186,7 +186,7 @@ Combined `board`: `error` if any issue is `error`; else `in_review` if any is `i
 
 ## Output
 
-Your final message is exactly one block and nothing else.
+Your final message is exactly one block and nothing else: no text before or after it, not even a line like "Here is the result". The caller parses the block.
 
 Finished (`status: ok` if there are no warnings, else `status: partial`):
 
