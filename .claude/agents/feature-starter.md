@@ -223,7 +223,7 @@ Combined `board`: `error` if any issue is `error`; else `in_progress` if any is 
 
 ## Output
 
-Your final message is exactly one block and nothing else.
+Your final message is exactly one block and nothing else: no text before or after it, not even a line like "Here is the result". The caller parses the block.
 
 Success:
 

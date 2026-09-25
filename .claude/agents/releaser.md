@@ -307,7 +307,7 @@ If the push fails, STOP with `reason: could not push <next_release>`. Record `ne
 
 ## Output
 
-Your final message is exactly one block and nothing else.
+Your final message is exactly one block and nothing else: no text before or after it, not even a line like "Here is the result". The caller parses the block.
 
 Finished (`status: ok` after run 2 with no warnings, `status: partial` after run 2 with warnings, `status: awaiting_merge` after run 1):
 

@@ -129,7 +129,7 @@ Record `epic: #<epic> (<completed>/<total> done)`, or `epic: -` if there is no p
 
 ## Step 5. Board status
 
-Set Done for every issue that is closed now: each `<t>` recorded as `closed` or `already_closed` in Step 3, and `<id>` unless it is `kept_open`. Never change the board of a `kept_open` task. Below, `<n>` is the issue being updated.
+Set Done for every issue that is closed now: each `<t>` recorded as `closed` or `already_closed` in Step 3, and `<id>` unless it is `kept_open`. A `kept_open` task is handled after this, in "Epic kept open". Below, `<n>` is the issue being updated.
 
 ```bash
 gh api graphql -F owner=<owner> -F repo=<repo> -F n=<n> -f query='
@@ -153,6 +153,34 @@ Each line is `<item_id> <project_id> <field_id> <done_option_id> <current_status
 - Otherwise this issue is `done` if you changed at least one line, else `already_done`.
 
 Combined `board`: `done` if any issue is `done`; else `already_done` if any is `already_done`; else `not_on_board`.
+
+### Epic kept open
+
+Only if `issue` is `kept_open`; else record `epic_board: -`. The PR of this delivery is merged, but the epic still has work left, so it must not stay In review. This is the only case where a status moves back.
+
+```bash
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
+query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){projectItems(first:10){nodes{
+  id
+  fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}
+  project{id field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}
+}}}}}' \
+  -q '.data.repository.issue.projectItems.nodes[] | [.id, .project.id, .project.field.id, (.project.field.options[] | select(.name=="In progress") | .id), (.fieldValueByName.name // "-")] | @tsv'
+```
+
+Each line is `<item_id> <project_id> <field_id> <in_progress_option_id> <current_status>`.
+
+- The command fails: record `epic_board: error`.
+- No lines: record `epic_board: not_on_board`.
+- For each line where `<current_status>` is `In review`:
+
+  ```bash
+  gh project item-edit --id <item_id> --project-id <project_id> --field-id <field_id> --single-select-option-id <in_progress_option_id>
+  ```
+
+  If it fails, record `epic_board: error`.
+- Leave every other status as it is.
+- Otherwise record `epic_board: in_progress` if you changed at least one line, else `epic_board: kept`.
 
 ## Step 6. Update the local release branch
 
@@ -258,7 +286,7 @@ git ls-remote --heads origin "<branch>" | cut -f1
 
 ## Output
 
-Your final message is exactly one block and nothing else.
+Your final message is exactly one block and nothing else: no text before or after it, not even a line like "Here is the result". The caller parses the block.
 
 Finished (`status: ok` if there are no warnings, else `status: partial`):
 
@@ -274,6 +302,7 @@ issue: <closed|already_closed|kept_open>
 sub_issues: <x/y done or ->
 epic: <#N (x/y done) or ->
 board: <done|already_done|not_on_board>
+epic_board: <in_progress|kept|not_on_board|error or ->
 release: <release or ->
 release_state: <updated|up_to_date|not_updated>
 local_branch: <deleted|absent|kept>
