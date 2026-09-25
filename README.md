@@ -73,34 +73,36 @@ On failure: `status: error`, `id`, `reason`.
 
 ---
 
-### `pr-opener`
+### `implementer`
 
-PR step of the SDD multi-agent flow (`.claude/agents/pr-opener.md`, model `haiku`, tools: `Bash`). It never merges, never force-pushes and never targets `main`/`master`.
+Implementation step of the SDD multi-agent flow (`.claude/agents/implementer.md`, model `sonnet`; the orchestrator runs groups marked complex on `opus`; tools: `Read`, `Edit`, `Write`, `Grep`, `Glob`, `Bash`). It never pushes and never uses `gh`.
 
-**Input** (from the orchestrator): `id`, `type`, `branch`, `base` (`release/*`), `title`, `summary`, `approach` (URL or `-`), `deviations` (URLs or `-`), `manual` (checks for the human, or `-`), `left` (or `-`).
+**Input:** a briefing from the orchestrator: `id`, `type`, `branch`, one `group` from `plan.md`, the matching slice of `context.md`, `previous` (what earlier groups created), `checks` (lint/test commands), `commit` format.
 
-The agent checks that the branch belongs to the task and has commits over the base, pushes it, and opens a PR `<type>(#<id>): <title>` into the base with the body "What was done / How to check / What is left" and `Refs #<id>` (not `Closes`: it does not fire on merges into `release/*`; `feature-finisher` closes the task). Then it sets the board Status to In review (only forward).
+The agent reads the listed files (a broad search is reported as a gap in the code map), implements the group, decides the details itself and records its choices, runs lint and tests, and commits the group by explicit paths. If the group needs a change that affects other tasks, it does not make it: it stops with `status: blocked` and `affects_other_tasks`, and the orchestrator asks the human.
 
-Re-running is safe: an up-to-date push is skipped, and an open PR is reused with its body refreshed.
+For the next group in the same code area the orchestrator continues the same agent (`SendMessage`), so it does not read the files again.
 
 **Output:**
 
 ```
-PR_OPENER_RESULT
-status: ok
-id: 18
-branch: feat/18-pr-opener-agent
-base: release/0.1.0
-sha: 4462666b3f4eacdba1d08a4277ea3aaa4602cd30
-push: pushed
-pr: 26
-pr_url: https://github.com/Beefeater84/sdd-spec-kit/pull/26
-pr_state: created
-board: in_review
-warnings: -
+IMPLEMENTER_RESULT
+status: done
+group: 1
+commit: 0edcfd9
+changed:
+  - src/store.js — createTodo — createTodo(title, dueDate?): Todo — changed
+  - test/store.test.js — - — - — changed
+decisions:
+  - Missing dueDate normalizes to null, so the field is always present.
+deviations: -
+gaps: -
+affects_other_tasks: none
+checks: npm run lint — pass; npm test — 5/5 pass
+blocker: -
 ```
 
-`status: partial` means a warning (e.g. the open PR targets another base). On failure: `status: error`, `id`, `reason`, `hint`.
+The orchestrator uses it: `changed` → the next briefing; `decisions`, `deviations` → a deviation comment in the issue; `gaps` → `context.md`; `affects_other_tasks` → an ADR and a stop.
 
 ---
 
@@ -137,6 +139,37 @@ reason: -
 ```
 
 `status` is `pass`, `fail`, or `error` (wrong branch, uncommitted changes, missing `plan.md` or `validation.md`).
+
+---
+
+### `pr-opener`
+
+PR step of the SDD multi-agent flow (`.claude/agents/pr-opener.md`, model `haiku`, tools: `Bash`). It never merges, never force-pushes and never targets `main`/`master`.
+
+**Input** (from the orchestrator): `id`, `type`, `branch`, `base` (`release/*`), `title`, `summary`, `approach` (URL or `-`), `deviations` (URLs or `-`), `manual` (checks for the human, or `-`), `left` (or `-`).
+
+The agent checks that the branch belongs to the task and has commits over the base, pushes it, and opens a PR `<type>(#<id>): <title>` into the base with the body "What was done / How to check / What is left" and `Refs #<id>` (not `Closes`: it does not fire on merges into `release/*`; `feature-finisher` closes the task). Then it sets the board Status to In review (only forward).
+
+Re-running is safe: an up-to-date push is skipped, and an open PR is reused with its body refreshed.
+
+**Output:**
+
+```
+PR_OPENER_RESULT
+status: ok
+id: 18
+branch: feat/18-pr-opener-agent
+base: release/0.1.0
+sha: 4462666b3f4eacdba1d08a4277ea3aaa4602cd30
+push: pushed
+pr: 26
+pr_url: https://github.com/Beefeater84/sdd-spec-kit/pull/26
+pr_state: created
+board: in_review
+warnings: -
+```
+
+`status: partial` means a warning (e.g. the open PR targets another base). On failure: `status: error`, `id`, `reason`, `hint`.
 
 ---
 
