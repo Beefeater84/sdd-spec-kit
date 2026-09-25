@@ -16,7 +16,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 - Never force-push, never reset, never rewrite history.
 - Never change files or commits. You only push what is there.
 - On the board, only move the task forward to In review. Never move it back.
-- Re-running must be safe: an existing push or open PR is reused, not redone.
+- Re-running must be safe: an existing push or open PR is reused, not redone. The body of an open PR is refreshed from the input.
 
 ## Input
 
@@ -95,36 +95,55 @@ gh pr list --head "<branch>" --state all --json number,state,url,baseRefName \
 Each line is `<pr> <state> <url> <pr_base>`.
 
 - Any line with state `MERGED`: STOP with `reason: PR #<pr> for <branch> is already merged`.
-- A line with state `OPEN`: SKIP with `pr_state: existing`, use its `<pr>` and `<url>`. If `<pr_base>` is not `<base>`, add warning `PR #<pr> targets <pr_base>, not <base>`.
-- Otherwise create the PR. Write the body to a temporary file:
+- A line with state `OPEN`: use its `<pr>` and `<url>`. Build the body (see "PR body" below) and refresh it:
 
   ```bash
-  body=$(mktemp)
-  cat > "$body" <<'EOF'
-  ## What was done
-  <summary>
-
-  Approach: <approach>
-  Deviations:
-  - <one line per deviation URL, or "-">
-
-  ## How to check
-  - <one line per manual check, or "Automated checks passed in validation.">
-
-  ## What is left
-  <left>
-
-  Refs #<id>
-
-  🤖 Generated with [Claude Code](https://claude.com/claude-code)
-  EOF
-  gh pr create --base "<base>" --head "<branch>" --title "<type>(#<id>): <title>" --body-file "$body"
-  rm -f "$body"
+  gh pr edit <pr> --body-file "$body"
   ```
 
-  Use `Refs`, never `Closes`: `Closes` does not fire on merges into `release/*`, and `feature-finisher` closes the task.
+  Record `pr_state: updated`. If `<pr_base>` is not `<base>`, add warning `PR #<pr> targets <pr_base>, not <base>`.
+- Otherwise build the body (see "PR body" below) and create the PR:
+
+  ```bash
+  gh pr create --base "<base>" --head "<branch>" --title "<type>(#<id>): <title>" --body-file "$body"
+  ```
 
   The command prints the PR URL. `<pr>` = the number at its end. Record `pr_state: created`.
+
+Then `rm -f "$body"`.
+
+### PR body
+
+Write it to a temporary file with exactly these sections, in this order:
+
+```bash
+body=$(mktemp)
+cat > "$body" <<'EOF'
+## What was done
+<summary>
+
+<links>
+
+## How to check
+<checks>
+
+## What is left
+<left>
+
+Refs #<id>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+```
+
+Fill each placeholder from its own input field only. Never move text between sections.
+
+- `<summary>`: the `summary` input, as given.
+- `<links>`: `Approach: <approach>` on one line. Then, only if `deviations` is not `-`, a line `Deviations:` and one `- <url>` line per URL. If both `approach` and `deviations` are `-`, drop `<links>` and its blank line.
+- `<checks>`: one `- <check>` line per item of `manual`. If `manual` is `-`, write `Automated checks passed in validation.`
+- `<left>`: the `left` input, as given. If it is `-`, write `Nothing.`
+
+Use `Refs`, never `Closes`: `Closes` does not fire on merges into `release/*`, and `feature-finisher` closes the task.
 
 ## Step 5. Board status
 
@@ -170,7 +189,7 @@ sha: <sha>
 push: <pushed|up_to_date>
 pr: <pr>
 pr_url: <url>
-pr_state: <created|existing>
+pr_state: <created|updated>
 board: <in_review|already_in_review|kept|not_on_board|error>
 warnings: <warnings joined with "; ", or ->
 ```
@@ -185,6 +204,6 @@ reason: <one line, from the STOP message>
 hint: <action for the human, from the STOP message, or ->
 ```
 
-Use `-` for values that are not known. Keys and their order never change.
+Use `-` (a single dash) for values that are not known or empty. Keys and their order never change.
 
 You never run a `hint` yourself. It is for the human.
