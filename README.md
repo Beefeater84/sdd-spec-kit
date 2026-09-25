@@ -34,6 +34,45 @@ On failure: `status: error`, `id`, `reason`, `hint` (`-` if there is nothing to 
 
 ---
 
+### `task-context`
+
+Context step of the SDD multi-agent flow (`.claude/agents/task-context.md`, model `haiku`, tools: `Bash`, `Read`, `Grep`). Read-only.
+
+**Input:** a task id, e.g. `16`.
+
+The agent collects a compact summary so the orchestrator does not read raw GitHub data: the issue body and the `## Подход к реализации` comment verbatim; `## Отклонение от подхода` and other comments as one line each; the parent epic and its goal; sibling sub-issues with their PRs and approach/deviation notes; ADRs from `specs/decisions/` that affect the task or are newer than it; ADRs proposed in open PRs of sibling tasks. It never judges relevance, edits issues, or reads code.
+
+**Output** (shortened):
+
+```
+TASK_CONTEXT_RESULT
+status: ok
+id: 16
+title: Create implementer agent
+url: https://github.com/Beefeater84/sdd-spec-kit/issues/16
+state: OPEN
+created: 2026-09-25
+labels: -
+epic: #8 Analyze create-sdd-feature command and align it with agents
+epic_goal: |
+  ...
+body: |
+  ...
+approach: -
+approach_body: -
+deviations: -
+comments: -
+siblings:
+  - #10 CLOSED Document create-sdd-feature design and create sub-agent issues — pr: #22 — notes: -
+  - #20 OPEN feature-starter: set board status to In progress — pr: #23 open — notes: -
+adrs: -
+in_flight: -
+```
+
+On failure: `status: error`, `id`, `reason`.
+
+---
+
 ### `implementer`
 
 Implementation step of the SDD multi-agent flow (`.claude/agents/implementer.md`, model `sonnet`; the orchestrator runs groups marked complex on `opus`; tools: `Read`, `Edit`, `Write`, `Grep`, `Glob`, `Bash`). It never pushes and never uses `gh`.
@@ -64,6 +103,42 @@ blocker: -
 ```
 
 The orchestrator uses it: `changed` → the next briefing; `decisions`, `deviations` → a deviation comment in the issue; `gaps` → `context.md`; `affects_other_tasks` → an ADR and a stop.
+
+---
+
+### `validator`
+
+Validation step of the SDD multi-agent flow (`.claude/agents/validator.md`, model `sonnet`, tools: `Read`, `Grep`, `Glob`, `Bash`). It never changes files, commits or uses `gh`: it checks, it does not fix.
+
+**Input:** `id`, `branch`, `base`, `folder` (e.g. `specs/features/42-user-login/`).
+
+The agent runs the project's typecheck, lint and tests for the whole project; every item of `validation.md` it can automate; checks that every `plan.md` group is done and no files outside the plan were added; and checks the diff against accepted ADRs in `specs/decisions/`. A check it cannot run is `skipped`, never a pass. Items that need a human (browser, real account, judgment) go to `manual` and end up in the PR under "How to check".
+
+If it fails, the orchestrator sends the failures to an implementer and runs the validator again, at most two rounds, then stops for the human.
+
+**Output** (a run that caught an extra file and an ADR violation, shortened):
+
+```
+VALIDATOR_RESULT
+status: fail
+id: 42
+branch: feat/42-todo-due-dates
+checks:
+  - typecheck — skipped — not configured
+  - lint — pass — npm run lint
+  - test — pass — npm test; 9 passed, 0 failed
+  - plan: group 1 — pass — src/store.js and test/store.test.js changed as listed
+  - plan: extra — fail — src/debug.js
+  - adr: specs/decisions/7-lenient-due-dates.md — fail — src/store.js contradicts the decision
+failures:
+  - plan: extra — src/debug.js is not in any plan group ...
+  - adr: 7-lenient-due-dates.md says createTodo never throws on a due date; src/store.js throws INVALID_DUE_DATE ...
+manual:
+  - The due date reads well in the UI date picker — open the app and pick a date
+reason: -
+```
+
+`status` is `pass`, `fail`, or `error` (wrong branch, uncommitted changes, missing `plan.md` or `validation.md`).
 
 ---
 
