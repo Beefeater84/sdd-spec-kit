@@ -34,6 +34,39 @@ On failure: `status: error`, `id`, `reason`, `hint` (`-` if there is nothing to 
 
 ---
 
+### `implementer`
+
+Implementation step of the SDD multi-agent flow (`.claude/agents/implementer.md`, model `sonnet`; the orchestrator runs groups marked complex on `opus`; tools: `Read`, `Edit`, `Write`, `Grep`, `Glob`, `Bash`). It never pushes and never uses `gh`.
+
+**Input:** a briefing from the orchestrator: `id`, `type`, `branch`, one `group` from `plan.md`, the matching slice of `context.md`, `previous` (what earlier groups created), `checks` (lint/test commands), `commit` format.
+
+The agent reads the listed files (a broad search is reported as a gap in the code map), implements the group, decides the details itself and records its choices, runs lint and tests, and commits the group by explicit paths. If the group needs a change that affects other tasks, it does not make it: it stops with `status: blocked` and `affects_other_tasks`, and the orchestrator asks the human.
+
+For the next group in the same code area the orchestrator continues the same agent (`SendMessage`), so it does not read the files again.
+
+**Output:**
+
+```
+IMPLEMENTER_RESULT
+status: done
+group: 1
+commit: 0edcfd9
+changed:
+  - src/store.js — createTodo — createTodo(title, dueDate?): Todo — changed
+  - test/store.test.js — - — - — changed
+decisions:
+  - Missing dueDate normalizes to null, so the field is always present.
+deviations: -
+gaps: -
+affects_other_tasks: none
+checks: npm run lint — pass; npm test — 5/5 pass
+blocker: -
+```
+
+The orchestrator uses it: `changed` → the next briefing; `decisions`, `deviations` → a deviation comment in the issue; `gaps` → `context.md`; `affects_other_tasks` → an ADR and a stop.
+
+---
+
 ### `feature-finisher`
 
 Last step of the SDD multi-agent flow (`.claude/agents/feature-finisher.md`, model `haiku`, tools: `Bash`). Runs after the feature PR is merged. It does not run tests.
