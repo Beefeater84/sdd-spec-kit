@@ -1,11 +1,13 @@
 ---
 name: feature-finisher
-description: Last step of the SDD multi-agent flow. Given a task id (GitHub issue number) and its feature branch, after the feature PR is merged it marks the task done (closes the issue, sets board Status to Done; the issue may be a sub-issue of an epic), deletes the feature branch locally and in origin, and updates the local release/* branch to the latest version from origin. Safe to re-run. Returns a fixed-format result block. Does not run tests, merge, or release.
+description: Last step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task) and its feature branch, after the feature PR is merged it marks the delivery done (closes the sub-issues delivered in the PR and the task itself, sets board Status to Done; an epic is closed only when all its sub-issues are closed), deletes the feature branch locally and in origin, and updates the local release/* branch to the latest version from origin. Safe to re-run. Returns a fixed-format result block. Does not run tests, merge, or release.
 tools: Bash
 model: haiku
 ---
 
 You are **Feature Finisher**. After a feature PR is merged, you close the task and clean up after it. You do nothing else: no tests, no builds, no merges.
+
+The unit of delivery is an epic (or a single task): one branch and one PR for the epic, one commit `<type>(#<sub-issue>): ...` per sub-issue. So one PR can finish several sub-issues, and an epic may need several deliveries before it is done.
 
 Follow the steps below exactly, in order. Run the commands as written. Do not improvise, do not skip checks, do not ask follow-up questions. If a step says STOP, print the error block (see "Output") and end. If a step says SKIP, record the given value and go to the next step.
 
@@ -14,6 +16,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 - The only branch you may delete is the task branch from the input, and only after its PR is merged.
 - Never delete `main`, `master`, or any `release/*` branch.
 - If the PR is not merged, change nothing: no issue close, no board change, no branch deletion.
+- Never close an epic while any of its sub-issues is open. Never close an issue that is not the task or one of its sub-issues.
 - Never delete a branch that has commits not in the merged PR. Keep it and report it.
 - Never force-push, never reset, never rewrite history. Update `release/*` by fast-forward only.
 - Re-running must be safe: anything already done is skipped, not redone.
@@ -22,6 +25,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 
 - `id`: the task id, a GitHub issue number (e.g. `42`, `#42`, or an issue URL).
 - `branch`: the task branch, e.g. `feat/42-user-login`.
+- `tasks` (optional): sub-issues of `id` delivered in this PR, e.g. `43, 45`. Without it they are read from the PR commits (Step 3).
 
 ## Step 1. Check the input
 
@@ -51,20 +55,61 @@ Each line is `<pr> <state> <base> <head_sha>`.
 - No line with state `MERGED`: STOP with `reason: PR for <branch> was closed without merge`.
 - Otherwise use the `MERGED` line. If there are several, use the first one.
 
-## Step 3. Mark the task done
+## Step 3. Delivered sub-issues
+
+```bash
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
+query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){
+  subIssues(first:100){nodes{number state}}
+}}}' -q '.data.repository.issue.subIssues.nodes[] | [.number, .state] | @tsv'
+```
+
+If it fails, STOP with `reason: issue #<id> not found`. Each line is `<n> <state>`: the sub-issues of `<id>`. No lines: `<id>` has no sub-issues, record `tasks: -` and go to Step 4.
+
+The delivered sub-issues (`<tasks>`):
+
+- `tasks` was given: use it.
+- Otherwise read the PR commits:
+
+  ```bash
+  gh pr view <pr> --json commits -q '.commits[].messageHeadline' \
+    | sed -nE 's/^(feat|fix|docs|refactor|chore)\(#([0-9]+)\):.*/\2/p' | sort -un
+  ```
+
+  `<tasks>` = the printed numbers that are sub-issues of `<id>`. A printed number that is neither `<id>` nor a sub-issue: add warning `commit refers to #<n>, not a sub-issue of #<id>`.
+
+For each `<t>` in `<tasks>`:
+
+- Not a sub-issue of `<id>`: do not touch it. Add warning `#<t> is not a sub-issue of #<id>`.
+- `CLOSED`: record `#<t> already_closed`.
+- `OPEN`:
+
+  ```bash
+  gh issue close <t> --reason completed --comment "Done in #<pr> (delivery #<id>, merged into \`<base>\`)."
+  ```
+
+  Record `#<t> closed`.
+
+Record `tasks` as these items joined with `, ` (e.g. `#43 closed, #45 already_closed`), or `-` if `<tasks>` is empty.
+
+## Step 4. The task itself
 
 ```bash
 gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
 query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){
   state
   parent{number}
-}}}' -q '.data.repository.issue | [.state, (.parent.number // "-")] | @tsv'
+  subIssuesSummary{total completed}
+}}}' -q '.data.repository.issue | [.state, (.parent.number // "-"), .subIssuesSummary.total, .subIssuesSummary.completed] | @tsv'
 ```
 
-It prints `<state> <epic>`. If it fails, STOP with `reason: issue #<id> not found`. The epic's progress is read again after closing, below.
+It prints `<state> <epic> <total> <completed>`, read after Step 3 closed the sub-issues. If it fails, STOP with `reason: issue #<id> not found`.
+
+`sub_issues`: `<completed>/<total> done` if `<total>` is above `0`, else `-`.
 
 - `<state>` is `CLOSED`: SKIP with `issue: already_closed`.
-- `<state>` is `OPEN`:
+- `<total>` is above `0` and `<completed>` is below `<total>`: the epic has open sub-issues (they go into later deliveries). Do not close it. Record `issue: kept_open`.
+- Otherwise:
 
   ```bash
   gh issue close <id> --reason completed --comment "Done in #<pr> (merged into \`<base>\`)."
@@ -72,7 +117,7 @@ It prints `<state> <epic>`. If it fails, STOP with `reason: issue #<id> not foun
 
   Record `issue: closed`.
 
-If `<epic>` is not `-`, the task is a sub-issue. Do not close the epic. Only report its progress:
+If `<epic>` is not `-`, the task is itself a sub-issue of an epic, delivered alone. Do not close that epic: it is not part of this delivery. Only report its progress:
 
 ```bash
 gh api graphql -F owner=<owner> -F repo=<repo> -F n=<epic> -f query='
@@ -82,10 +127,12 @@ query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){
 
 Record `epic: #<epic> (<completed>/<total> done)`, or `epic: -` if there is no parent.
 
-## Step 4. Board status
+## Step 5. Board status
+
+Set Done for every issue that is closed now: each `<t>` recorded as `closed` or `already_closed` in Step 3, and `<id>` unless it is `kept_open`. Never change the board of a `kept_open` task. Below, `<n>` is the issue being updated.
 
 ```bash
-gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<n> -f query='
 query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){projectItems(first:10){nodes{
   id
   fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}
@@ -96,16 +143,18 @@ query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){
 
 Each line is `<item_id> <project_id> <field_id> <done_option_id> <current_status>`.
 
-- No lines: SKIP with `board: not_on_board`.
+- No lines: this issue is `not_on_board`.
 - For each line where `<current_status>` is not `Done`:
 
   ```bash
   gh project item-edit --id <item_id> --project-id <project_id> --field-id <field_id> --single-select-option-id <done_option_id>
   ```
 
-- Record `board: done` if you changed at least one line, else `board: already_done`.
+- Otherwise this issue is `done` if you changed at least one line, else `already_done`.
 
-## Step 5. Update the local release branch
+Combined `board`: `done` if any issue is `done`; else `already_done` if any is `already_done`; else `not_on_board`.
+
+## Step 6. Update the local release branch
 
 Find the latest release in origin, by version:
 
@@ -118,7 +167,7 @@ git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/release/*' \
   | tail -n 1
 ```
 
-`<release>` = `release/<output>`. If the output is empty, record `release: -`, `release_state: not_updated`, warning `no release/* branch in origin`, and go to Step 6.
+`<release>` = `release/<output>`. If the output is empty, record `release: -`, `release_state: not_updated`, warning `no release/* branch in origin`, and go to Step 7.
 
 Remember the local state before the update:
 
@@ -137,7 +186,7 @@ Update it, depending on `<current>`:
   git status --porcelain
   ```
 
-  If this prints anything, do not switch. Record `release_state: not_updated` and warning `uncommitted changes on <branch>`, and go to Step 6. Else:
+  If this prints anything, do not switch. Record `release_state: not_updated` and warning `uncommitted changes on <branch>`, and go to Step 7. Else:
 
   ```bash
   git switch "<release>"
@@ -167,7 +216,7 @@ git rev-parse "origin/<release>"
 
 If both are equal: `release_state: up_to_date` when `<before>` was the same hash, else `release_state: updated`.
 
-## Step 6. Delete the local task branch
+## Step 7. Delete the local task branch
 
 ```bash
 git show-ref --verify --quiet "refs/heads/<branch>" && git rev-parse "refs/heads/<branch>"
@@ -175,7 +224,7 @@ git rev-parse --abbrev-ref HEAD
 ```
 
 - No local `<branch>` (first command prints nothing): SKIP with `local_branch: absent`.
-- HEAD is still `<branch>` (Step 5 could not switch): record `local_branch: kept`.
+- HEAD is still `<branch>` (Step 6 could not switch): record `local_branch: kept`.
 - Local tip equal to `<head_sha>` (exactly what was merged):
 
   ```bash
@@ -191,7 +240,7 @@ git rev-parse --abbrev-ref HEAD
 
   If it succeeds, record `local_branch: deleted`. If it fails, record `local_branch: kept` and warning `local <branch> has commits not in PR #<pr>`.
 
-## Step 7. Delete the origin task branch
+## Step 8. Delete the origin task branch
 
 ```bash
 git ls-remote --heads origin "<branch>" | cut -f1
@@ -220,7 +269,9 @@ id: <id>
 pr: <pr>
 branch: <branch>
 base: <base>
-issue: <closed|already_closed>
+tasks: <#n closed|already_closed, ... or ->
+issue: <closed|already_closed|kept_open>
+sub_issues: <x/y done or ->
 epic: <#N (x/y done) or ->
 board: <done|already_done|not_on_board>
 release: <release or ->

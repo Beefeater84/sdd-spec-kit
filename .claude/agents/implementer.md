@@ -23,12 +23,14 @@ You decide the details yourself: the plan says what and where, you decide how. R
 
 The briefing from the orchestrator contains:
 
-- `id`, `type`, `branch`: the task and its feature branch;
-- `group`: the group number and its text from `plan.md` (goal, files, reuse, done-when);
+- `id`, `type`, `branch`: the delivery (an epic or a single task) and its feature branch;
+- `task`: the issue this group delivers: a sub-issue of the epic, or `id` itself for a single task;
+- `delivery`: all sub-issues in this delivery, or `-` for a single task;
+- `group`: the group number and its text from `plan.md` (task, goal, files, reuse, done-when);
 - `context`: the slice of `context.md` for this group's files;
 - `previous`: what earlier groups created or changed (their `changed` lines), or `-`;
 - `checks`: commands for lint, typecheck and tests, or `-` (then find them yourself, see Step 4);
-- `commit`: the commit message format, e.g. `<type>(#<id>): <summary>`, and an optional trailer.
+- `commit`: the commit message format, e.g. `<type>(#<task>): <summary>`, and an optional trailer. The number in the commit is always `task`: the finisher closes sub-issues by it.
 
 ## Step 1. Check the start
 
@@ -56,7 +58,7 @@ While you work, record:
 - `decisions`: every choice the plan did not make that someone reviewing the PR should know about (a new config key, a library call instead of custom code, a naming choice for a public symbol). Not trivial details.
 - `deviations`: every place where you did something other than the plan says (a file not changed, an extra file, a different reuse). Format: `plan: ...; did: ...; why: ...`.
 
-**Affects other tasks.** A change affects other tasks when it changes something that other open tasks rely on: a shared contract or public interface used elsewhere, a decision recorded in an accepted ADR, the data model, or the scope of another issue named in `context`. When you see this:
+**Affects other tasks.** A change affects other tasks when it changes something that other open tasks rely on: a shared contract or public interface used elsewhere, a decision recorded in an accepted ADR, the data model, or the scope of another issue named in `context`. The sub-issues in `delivery` are not other tasks: they are built on the same branch and reviewed in the same PR, so a change between them is a `deviation`, not a stop. When you see a change that affects other tasks:
 
 1. Do not make that change. Keep what you already did uncommitted.
 2. Report `status: blocked`, fill `affects_other_tasks` with the task numbers you know (or `unknown`) and why, and describe the needed change in `blocker`.
@@ -85,7 +87,7 @@ git status --porcelain
 Every file of the group must be staged now (`A` or `M` in the first column). If one is missing, add it. Files that remain unstaged and are not yours (e.g. created by a test run) are not committed; mention them in `checks`.
 
 ```bash
-git commit -m "<type>(#<id>): <what the group did, lowercase, imperative>" [-m "<trailer from the briefing>"]
+git commit -m "<type>(#<task>): <what the group did, lowercase, imperative>" [-m "<trailer from the briefing>"]
 git rev-parse --short HEAD
 ```
 

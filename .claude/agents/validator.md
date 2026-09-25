@@ -56,7 +56,7 @@ git diff --stat "<ref>...<branch>"
 git log --oneline "<ref>..<branch>"
 ```
 
-For each group in `plan.md`: its files were created or changed as listed, and its "done when" holds (use the results of Steps 2–3; read the code only where the results do not answer it). One `checks` line per group: `plan: group <n> — pass|fail — <detail>`.
+For each group in `plan.md`: its files were created or changed as listed, and its "done when" holds (use the results of Steps 2–3; read the code only where the results do not answer it). Each group has its own commit `<type>(#<task>): ...`, where `<task>` is the group's `Task` in `plan.md` (one group = one commit, so the finisher can close each sub-issue by its commit). One `checks` line per group: `plan: group <n> — pass|fail — <detail>`.
 
 Files changed on the branch that no group mentions, other than the feature folder and `specs/decisions/`: one `checks` line `plan: extra — fail — <files>`, unless a deviation explains them (see the commit messages and the orchestrator's note in the input, if any).
 
