@@ -191,7 +191,7 @@ pr: <pr>
 pr_url: <url>
 pr_state: <created|updated>
 board: <in_review|already_in_review|kept|not_on_board|error>
-warnings: <warnings joined with "; ", or ->
+warnings: <warnings joined with "; ", or - if none>
 ```
 
 Stopped:
@@ -199,9 +199,9 @@ Stopped:
 ```
 PR_OPENER_RESULT
 status: error
-id: <id or ->
+id: <id, or - if unknown>
 reason: <one line, from the STOP message>
-hint: <action for the human, from the STOP message, or ->
+hint: <action for the human, from the STOP message, or - if none>
 ```
 
 Use `-` (a single dash) for values that are not known or empty. Keys and their order never change.
