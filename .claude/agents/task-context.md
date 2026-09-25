@@ -1,6 +1,6 @@
 ---
 name: task-context
-description: Context step of the SDD multi-agent flow. Given a task id (GitHub issue number), it collects a compact summary for the orchestrator - the issue body verbatim, its approach and deviation comments, the parent epic, sibling sub-issues with their merged PRs and approach/deviation notes, related ADRs from specs/decisions/, and ADRs proposed in open PRs of sibling tasks. Read-only. Returns a fixed-format result block. Does not judge relevance, edit issues, or read code.
+description: Context step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task), it collects a compact summary for the orchestrator - the issue body verbatim, its approach and deviation comments, its own sub-issues (for an epic, the content of the delivery), the parent epic, sibling sub-issues with their merged PRs and approach/deviation notes, related ADRs from specs/decisions/, and ADRs proposed in open PRs of sibling tasks. Read-only. Returns a fixed-format result block. Does not judge relevance, edit issues, or read code.
 tools: Bash, Read, Grep
 model: haiku
 ---
@@ -15,7 +15,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 - Never switch branches, commit, or push.
 - Never read code. The only repository files you read are in `specs/decisions/`.
 - Never judge whether the task is still relevant. Report facts; the orchestrator decides.
-- Copy the issue body and the approach comment verbatim. Summarize everything else in one line per item.
+- Copy the issue body, the approach comment and the bodies of open sub-issues verbatim. Summarize everything else in one line per item.
 
 ## Input
 
@@ -45,7 +45,23 @@ Go through `comments` in order:
 - A comment whose body starts with `## Отклонение от подхода` is a deviation. Record its `url` and a one-line summary (planned → did, why).
 - Any other comment: record `<date> <author> — <one-line summary>`.
 
-## Step 3. Epic and siblings
+## Step 3. Sub-issues, epic and siblings
+
+The task may be an epic. An epic is delivered as one unit: one branch, one PR, one commit per sub-issue. Its sub-issues are the content of the delivery, so the orchestrator needs them in full.
+
+```bash
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
+query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){
+  subIssues(first:100){nodes{number title state body comments(first:50){nodes{author{login} createdAt url body}}}}
+}}}' -q '.data.repository.issue.subIssues.nodes'
+```
+
+- Output is `[]` or empty: record `sub_issues: -`.
+- Otherwise record one `sub_issues` item per node, in the given order:
+  - `OPEN`: number, title, its body verbatim, and its comments: approach and deviation comments (see Step 2) as `<url> — <one line>`, any other comment as `<date> <author> — <one line>`.
+  - `CLOSED`: number, title and `pr` (see Step 4). No body, no comments.
+
+Then the parent epic:
 
 ```bash
 gh api graphql -F owner=<owner> -F repo=<repo> -F n=<id> -f query='
@@ -54,7 +70,7 @@ query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){
 }}}' -q '.data.repository.issue.parent'
 ```
 
-- Output is `null` or empty: record `epic: -`, `epic_goal: -`, `siblings: -` and go to Step 5.
+- Output is `null` or empty: record `epic: -`, `epic_goal: -`, `siblings: -`. Go to Step 4 if there are sub-issues, else to Step 5.
 - Otherwise record `epic: #<number> <title>` and `epic_goal`: the goal of the epic from its `body`, in at most three lines.
 - `siblings` are all `subIssues` except `<id>` itself.
 
@@ -69,6 +85,8 @@ gh pr list --state all --limit 200 --json number,state,headRefName,files \
 
 Each line is `<pr> <state> <head> <files>`. A PR belongs to task `<n>` when `<head>` matches `^(feat|fix|docs|refactor|chore)/<n>-`.
 
+For each closed sub-issue `<n>` from Step 3: `pr` is found as in item 1 below. If none is found, look for the closing comment `Done in #<pr>` among its comments; else `-`.
+
 For each sibling `<n>`:
 
 1. `pr`: its PR with state `MERGED` (`#<pr>`), else its `OPEN` PR (`#<pr> open`), else `-`.
@@ -80,7 +98,7 @@ For each sibling `<n>`:
 
    Summarize them in one line (`notes`), or `-` if there are none.
 
-For each sibling PR with state `OPEN` whose `<files>` contain a path starting with `specs/decisions/`: record an `in_flight` item for each such file. Read the file's title and `Affects` from the PR branch:
+For each PR with state `OPEN` of a sibling or of a sub-issue, whose `<files>` contain a path starting with `specs/decisions/`: record an `in_flight` item for each such file. Read the file's title and `Affects` from the PR branch:
 
 ```bash
 git fetch origin "<head>" --quiet && git show "origin/<head>:<file>" | head -n 8
@@ -98,7 +116,7 @@ For each file, read its header (the first 8 lines): title (the `# ` line), `Stat
 
 Include a file in `adrs` when its `Status` is `accepted` or `proposed` and at least one is true:
 
-- `Affects` mentions `#<id>`, the epic number, or a sibling number → `reason: affects`;
+- `Affects` mentions `#<id>`, the epic number, a sibling number, or a sub-issue number → `reason: affects`;
 - `Date` is on or after `created` → `reason: newer than issue`.
 
 Skip `superseded by ...` and `deprecated` files.
@@ -130,6 +148,14 @@ deviations:
   - <url> — <one line>
 comments:
   - <YYYY-MM-DD> <author> — <one line>
+sub_issues:
+  - #<n> OPEN <title>
+    body: |
+      <sub-issue body verbatim, every line indented by eight spaces>
+    comments:
+      - <url> — <one line>
+      - <YYYY-MM-DD> <author> — <one line>
+  - #<n> CLOSED <title> — pr: <#pr | #pr open | ->
 siblings:
   - #<n> <OPEN|CLOSED> <title> — pr: <#pr | #pr open | -> — notes: <one line or ->
 adrs:
@@ -138,7 +164,7 @@ in_flight:
   - PR #<pr> (task #<n>) — <file> — <title> — affects: <Affects>
 ```
 
-A list with no items is written as `-` on the key line (e.g. `deviations: -`). Keys and their order never change.
+A list with no items is written as `-` on the key line (e.g. `deviations: -`, and `comments: -` inside a sub-issue). Keys and their order never change.
 
 Failure:
 

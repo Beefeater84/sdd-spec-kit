@@ -232,6 +232,28 @@ Removed: `requirements.md` (requirements are in the issue, packages and constrai
 
 In progress (`feature-starter`) → In review (`pr-opener`) → Done (`feature-finisher`).
 
+## 6a. Unit of delivery (#29)
+
+The first version of this flow treated every issue as its own delivery. Sub-issues #15–#18, #20, #21 of this epic went as separate branches and PRs. They all edited the same place in `README.md`, so after each merge the rest conflicted (#25, #27 twice), and the human approved PRs one by one while the agent waited. The cause: the **unit of tracking** (issue, board status, comments) was mixed up with the **unit of delivery** (branch, PR).
+
+The rule, built into the command and the agents (it is a process rule, so it is not an ADR — agents must not have to look for it):
+
+- A discussed epic is implemented in one pass: one branch `<type>/<epic>-<slug>`, one PR.
+- A sub-issue of the epic = one group in `plan.md` = one commit `<type>(#<sub-issue>): ...`. Sub-issues stay on the board for tracking and get their own deviation comments.
+- A large epic is split into sequential deliveries: the next branch starts only after the previous PR is merged. No parallel PRs within an epic. The split is decided at the plan stage.
+- A task without sub-issues is a delivery of its own, as before.
+
+| Agent | Role in a delivery |
+|---|---|
+| `feature-starter` | Branch named after the epic; In progress for the epic and the sub-issues given in `tasks`. |
+| `task-context` | For an epic: its sub-issues (body, comments, state) as the content of the delivery. |
+| `implementer` | Commit number = the group's sub-issue. Sub-issues of the same delivery are not "other tasks". |
+| `validator` | One commit per group. |
+| `pr-opener` | One PR; lists the sub-issues; `Refs #<epic>, #<sub-issue>, ...`; In review for all. |
+| `feature-finisher` | Closes the sub-issues found in the PR commits; closes the epic only when all its sub-issues are closed. |
+
+Agent descriptions moved from `README.md` to `docs/agents/<name>.md`: `README.md` keeps a short table, so parallel work does not conflict on it.
+
 ## 7. What goes where (for #9)
 
 **Covered by existing agents** — the command calls them and drops its own steps:
