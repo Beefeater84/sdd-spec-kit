@@ -150,3 +150,15 @@ Guides a replanning session between features.
 **Usage:** `/sdd-replan`
 
 Reviews product direction changes, propagates constitution updates to affected specs and code, and reassesses the roadmap. Small changes are applied immediately; large ones are scheduled as new roadmap features. Encourages working on a dedicated `replan/<topic>` branch to track which version of the constitution produced which code.
+
+## TEMPLATES
+
+Artifacts of the multi-agent `create-sdd-feature` flow (design: `docs/analysis/8-create-sdd-feature.md`).
+
+- `specs/AGENT.md` — a project file, filled in like `mission.md`. Tells agents what to read in `specs/` always (mission, tech stack, accepted decisions) and what by topic, and where decisions go.
+- `.claude/templates/sdd/adr.md` — a cross-cutting decision, saved as `specs/decisions/<id>-<slug>.md`. Accepted ADRs are never edited; a new one supersedes the old.
+- `.claude/templates/sdd/plan.md` — the plan of one task, for the human: task groups with goal, files, reuse and done-when. No code.
+- `.claude/templates/sdd/context.md` — the code map of one task, for agents: paths, symbols, patterns.
+- `.claude/templates/sdd/validation.md` — the validator's checklist: automated and manual checks.
+
+A task's files live in `specs/features/<id>-<slug>/`.
