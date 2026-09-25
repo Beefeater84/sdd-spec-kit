@@ -32,17 +32,24 @@ The skill explores the codebase autonomously — README, TODO, package files, gi
 
 ### `/create-sdd-feature`
 
-Creates a feature spec file following the Spec-Driven Development (SDD) workflow.
+Delivers a GitHub issue (an epic or a single task) through the multi-agent SDD flow. The main agent is the orchestrator: it gathers context, agrees the approach with you, writes the plan and runs the agents; it never writes code itself.
 
-**Usage:** `/create-sdd-feature` or `/create-sdd-feature "feature name"`
+**Usage:** `/create-sdd-feature <issue#>` or `/create-sdd-feature <epic#> <sub-issue#> ...` (limit the delivery to these sub-issues).
 
-The skill reads the project constitution (`specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md`), identifies the target feature, and generates a structured spec file at `specs/features/<feature-name>.md`.
+1. `feature-starter` — branch `<type>/<id>-<slug>` from the latest `release/*`, In progress.
+2. Base context from `specs/AGENT.md`: mission, tech stack, accepted ADRs.
+3. `task-context` — task summary; relevance check against later decisions.
+4. Code research with `Explore`.
+5. Approach agreement with you → issue comment `## Подход к реализации`.
+6. Plan: `specs/features/<id>-<slug>/` with `plan.md`, `context.md`, `validation.md`, first commit.
+7. `implementer` per group → one commit per sub-issue; deviations → issue comments `## Отклонение от подхода`.
+8. `validator` — up to two fix rounds.
+9. `pr-opener` — one PR into `release/*`, In review.
+10. After you merge: `feature-finisher` — closes the sub-issues, the epic once all are closed, cleans up.
 
-The spec includes: Goal, Requirements, Task Groups, Key Decisions, and a Validation Scorecard.
+It stops for you only at: a mismatch between the issue and later decisions, approach agreement, an implementer blocked after a retry, a decision that affects other tasks (ADR), validation failing after two rounds, PR review.
 
-After spec approval, the skill outputs a ready-to-use implementation prompt and guides the developer through the validation phase — keeping spec and code in sync before merging.
-
-**Requires:** a filled-in project constitution in `specs/`.
+**Requires:** `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md`; the agents in `.claude/agents/`. Design: `docs/analysis/8-create-sdd-feature.md`.
 
 ---
 
