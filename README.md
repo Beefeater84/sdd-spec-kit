@@ -10,7 +10,7 @@ First step of the SDD multi-agent flow (`.claude/agents/feature-starter.md`, mod
 
 **Input:** a GitHub issue number, or a task description (the agent then creates the issue with `gh issue create`).
 
-The agent fetches `origin`, picks the highest `origin/release/*` by version (`1.10` > `1.9`), checks it matches `origin`, and creates a local branch `<type>/<id>-<slug>` from it without upstream. It never pushes and never uses `main`/`master`. It stops if there is no `origin/release/*`, if the branch already exists, or if the working tree is dirty.
+The agent fetches `origin`, picks the highest `origin/release/*` by version (`1.10` > `1.9`), checks it matches `origin`, and creates a local branch `<type>/<id>-<slug>` from it without upstream. Then it sets the task's board Status to In progress (only from empty, Backlog or Ready; it never moves a task back). It never pushes and never uses `main`/`master`. It stops if there is no `origin/release/*`, if the branch already exists, or if the working tree is dirty.
 
 Local `release/*` branches are never used as a base, but they are checked for unpushed work. If a local release is newer than every release in `origin`, or the local base branch is ahead of (or diverged from) `origin`, the agent stops and returns a `hint` with the command for a human to run (e.g. `git push -u origin release/1.11`). After that, run the agent again.
 
@@ -25,7 +25,10 @@ branch: feat/1-first-agent
 base: release/1.10
 base_sha: acf3fac1b750c189c3426e56a5d57e6753269b53
 issue_url: https://github.com/Beefeater84/sdd-spec-kit/issues/1
+board: in_progress
 ```
+
+`board` is `in_progress`, `already_in_progress`, `kept` (the task is further along, e.g. In review), `not_on_board`, or `error`. A board failure never undoes the branch.
 
 On failure: `status: error`, `id`, `reason`, `hint` (`-` if there is nothing to suggest).
 
@@ -67,6 +70,37 @@ in_flight: -
 ```
 
 On failure: `status: error`, `id`, `reason`.
+
+---
+
+### `pr-opener`
+
+PR step of the SDD multi-agent flow (`.claude/agents/pr-opener.md`, model `haiku`, tools: `Bash`). It never merges, never force-pushes and never targets `main`/`master`.
+
+**Input** (from the orchestrator): `id`, `type`, `branch`, `base` (`release/*`), `title`, `summary`, `approach` (URL or `-`), `deviations` (URLs or `-`), `manual` (checks for the human, or `-`), `left` (or `-`).
+
+The agent checks that the branch belongs to the task and has commits over the base, pushes it, and opens a PR `<type>(#<id>): <title>` into the base with the body "What was done / How to check / What is left" and `Refs #<id>` (not `Closes`: it does not fire on merges into `release/*`; `feature-finisher` closes the task). Then it sets the board Status to In review (only forward).
+
+Re-running is safe: an up-to-date push is skipped, and an open PR is reused with its body refreshed.
+
+**Output:**
+
+```
+PR_OPENER_RESULT
+status: ok
+id: 18
+branch: feat/18-pr-opener-agent
+base: release/0.1.0
+sha: 4462666b3f4eacdba1d08a4277ea3aaa4602cd30
+push: pushed
+pr: 26
+pr_url: https://github.com/Beefeater84/sdd-spec-kit/pull/26
+pr_state: created
+board: in_review
+warnings: -
+```
+
+`status: partial` means a warning (e.g. the open PR targets another base). On failure: `status: error`, `id`, `reason`, `hint`.
 
 ---
 
@@ -189,3 +223,15 @@ Guides a replanning session between features.
 **Usage:** `/sdd-replan`
 
 Reviews product direction changes, propagates constitution updates to affected specs and code, and reassesses the roadmap. Small changes are applied immediately; large ones are scheduled as new roadmap features. Encourages working on a dedicated `replan/<topic>` branch to track which version of the constitution produced which code.
+
+## TEMPLATES
+
+Artifacts of the multi-agent `create-sdd-feature` flow (design: `docs/analysis/8-create-sdd-feature.md`).
+
+- `specs/AGENT.md` — a project file, filled in like `mission.md`. Tells agents what to read in `specs/` always (mission, tech stack, accepted decisions) and what by topic, and where decisions go.
+- `.claude/templates/sdd/adr.md` — a cross-cutting decision, saved as `specs/decisions/<id>-<slug>.md`. Accepted ADRs are never edited; a new one supersedes the old.
+- `.claude/templates/sdd/plan.md` — the plan of one task, for the human: task groups with goal, files, reuse and done-when. No code.
+- `.claude/templates/sdd/context.md` — the code map of one task, for agents: paths, symbols, patterns.
+- `.claude/templates/sdd/validation.md` — the validator's checklist: automated and manual checks.
+
+A task's files live in `specs/features/<id>-<slug>/`.
