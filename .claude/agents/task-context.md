@@ -1,6 +1,6 @@
 ---
 name: task-context
-description: Context step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task), it collects a compact summary for the orchestrator - the issue body verbatim, its approach and deviation comments, its own sub-issues (for an epic, the content of the delivery), the parent epic, sibling sub-issues with their merged PRs and approach/deviation notes, related ADRs from specs/decisions/, and ADRs proposed in open PRs of sibling tasks. Read-only. Returns a fixed-format result block. Does not judge relevance, edit issues, or read code.
+description: Context step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task), it collects a compact summary for the orchestrator - the issue body verbatim, its approach and deviation comments, its own sub-issues (for an epic, the content of the delivery), the parent epic, sibling sub-issues with their merged PRs and approach/deviation notes, the tasks it depends on (native blocked by and Depends on links in the body) with their PRs and decisions, related ADRs from specs/decisions/, and ADRs proposed in open PRs of sibling and dependency tasks. Read-only. Returns a fixed-format result block. Does not judge relevance, edit issues, or read code.
 tools: Bash, Read, Grep
 model: haiku
 ---
@@ -32,12 +32,12 @@ It prints `<owner> <repo>`. Use them below.
 ## Step 2. The issue
 
 ```bash
-gh issue view <id> --json number,title,state,url,createdAt,labels,body,comments
+gh issue view <id> --json number,title,state,url,createdAt,labels,body,comments,blockedBy
 ```
 
 If the command fails, STOP with `reason: issue #<id> not found`.
 
-Record `title`, `state`, `url`, `created` (the date part of `createdAt`), `labels` (names joined with `, `, or `-`) and `body` (verbatim).
+Record `title`, `state`, `url`, `created` (the date part of `createdAt`), `labels` (names joined with `, `, or `-`), `body` (verbatim) and `blocked_by`: the `number` of every item in `blockedBy.nodes` (may be empty).
 
 Go through `comments` in order:
 
@@ -70,13 +70,13 @@ query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){
 }}}' -q '.data.repository.issue.parent'
 ```
 
-- Output is `null` or empty: record `epic: -`, `epic_goal: -`, `siblings: -`. Go to Step 4 if there are sub-issues, else to Step 5.
+- Output is `null` or empty: record `epic: -`, `epic_goal: -`, `siblings: -`. Go to Step 4.
 - Otherwise record `epic: #<number> <title>` and `epic_goal`: the goal of the epic from its `body`, in at most three lines.
 - `siblings` are all `subIssues` except `<id>` itself.
 
 ## Step 4. What siblings did
 
-Merged and open PRs, with their files:
+Always run this command: Step 5 needs the PR list too. Merged and open PRs, with their files:
 
 ```bash
 gh pr list --state all --limit 200 --json number,state,headRefName,files \
@@ -84,6 +84,8 @@ gh pr list --state all --limit 200 --json number,state,headRefName,files \
 ```
 
 Each line is `<pr> <state> <head> <files>`. A PR belongs to task `<n>` when `<head>` matches `^(feat|fix|docs|refactor|chore)/<n>-`.
+
+If there are no sub-issues and no siblings, go to Step 5.
 
 For each closed sub-issue `<n>` from Step 3: `pr` is found as in item 1 below. If none is found, look for the closing comment `Done in #<pr>` among its comments; else `-`.
 
@@ -98,13 +100,57 @@ For each sibling `<n>`:
 
    Summarize them in one line (`notes`), or `-` if there are none.
 
-For each PR with state `OPEN` of a sibling or of a sub-issue, whose `<files>` contain a path starting with `specs/decisions/`: record an `in_flight` item for each such file. Read the file's title and `Affects` from the PR branch:
+For each PR with state `OPEN` of a sibling or of a sub-issue (dependencies: see Step 5), whose `<files>` contain a path starting with `specs/decisions/`: record an `in_flight` item for each such file. Read the file's title and `Affects` from the PR branch:
 
 ```bash
 git fetch origin "<head>" --quiet && git show "origin/<head>:<file>" | head -n 8
 ```
 
-## Step 5. Decision records
+## Step 5. Dependencies
+
+Dependencies are the tasks this task waits for. They come from two sources.
+
+1. `blocked_by` from Step 2 → `source: blocked by`.
+2. Links in the issue body → `source: body`. Run this command as written, with `<id>`, `<owner>` and `<repo>` replaced. It prints one issue number per line, or nothing:
+
+   ```bash
+   gh issue view <id> --json body -q .body | LC_ALL=C.UTF-8 grep -oiE '(^|[^«"“`])(depends on|dependent on|blocked by|requires|зависит от|блокируется)[: ]+(#[0-9]+|https://github\.com/<owner>/<repo>/issues/[0-9]+)(( *, *| +(and|и) +|, *(and|и) +)(#[0-9]+|https://github\.com/<owner>/<repo>/issues/[0-9]+))*' | LC_ALL=C.UTF-8 grep -oE '(#|/issues/)[0-9]+' | grep -oE '[0-9]+' | sort -nu
+   ```
+
+   Use only the numbers this command prints. Do not add other numbers you see in the body (e.g. "после #5", "см. #7", a quoted «Depends on #8»).
+
+Merge both lists:
+
+- A number found in both sources gets `source: blocked by, body`.
+- Remove `<id>` itself, the epic number, every sub-issue number and every sibling number.
+- Keep each number once, in ascending order.
+
+If no number is left, record `depends_on: -` and go to Step 6.
+
+For each dependency `<n>`:
+
+```bash
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<n> -f query='
+query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){issue(number:$n){
+  number title state subIssues(first:100){nodes{state}} comments(first:100){nodes{author{login} createdAt url body}}
+}}}' -q '.data.repository.issue | "#\(.number) \(.state) \(.title)", "sub_issues: \([.subIssues.nodes[] | select(.state == "CLOSED")] | length) closed, \([.subIssues.nodes[] | select(.state == "OPEN")] | length) open", (.comments.nodes[] | "----- \(.createdAt[:10]) \(.author.login) \(.url)", .body)'
+```
+
+The first line is `#<n> <STATE> <title>`, the second is the sub-issue count, then each comment starts with a `----- <date> <author> <url>` line followed by its body. If the command fails or prints nothing, skip this number.
+
+Record one `depends_on` item:
+
+- `#<n> <STATE> <title>` and `source` (see above).
+- `pr`: from the PR list of Step 4, by the same rule as for siblings (`#<pr>` for `MERGED`, else `#<pr> open`, else a closing comment `Done in #<pr>`, else `-`).
+- `sub_issues`: the second line without the `sub_issues: ` prefix when it is not `0 closed, 0 open` (the dependency is an epic), else `-`. Do not list the sub-issues.
+- `notes`: approach and deviation comments (bodies starting with `## Подход к реализации` or `## Отклонение от подхода`) in one line, or `-`.
+- `decisions`: one line for each other comment whose body starts with `## `: `<heading> — <gist of the decisions, one line>`. Then one line for all remaining comments together: `other comments — <one line>`. Write `-` if there are no such comments.
+
+Keep each item within about 10 lines. Never copy comment bodies. Do not follow the dependencies of a dependency.
+
+For each dependency PR with state `OPEN` whose `<files>` contain a path starting with `specs/decisions/`: record an `in_flight` item for each such file, as in Step 4.
+
+## Step 6. Decision records
 
 ```bash
 ls specs/decisions/*.md 2>/dev/null
@@ -116,7 +162,7 @@ For each file, read its header (the first 8 lines): title (the `# ` line), `Stat
 
 Include a file in `adrs` when its `Status` is `accepted` or `proposed` and at least one is true:
 
-- `Affects` mentions `#<id>`, the epic number, a sibling number, or a sub-issue number → `reason: affects`;
+- `Affects` mentions `#<id>`, the epic number, a sibling number, a sub-issue number, or a dependency number (Step 5) → `reason: affects`;
 - `Date` is on or after `created` → `reason: newer than issue`.
 
 Skip `superseded by ...` and `deprecated` files.
@@ -158,6 +204,13 @@ sub_issues:
   - #<n> CLOSED <title> — pr: <#pr | #pr open | ->
 siblings:
   - #<n> <OPEN|CLOSED> <title> — pr: <#pr | #pr open | -> — notes: <one line or ->
+depends_on:
+  - #<n> <OPEN|CLOSED> <title> — source: <blocked by | body | blocked by, body> — pr: <#pr | #pr open | ->
+    sub_issues: <k closed, m open or ->
+    notes: <one line or ->
+    decisions:
+      - <heading> — <one line>
+      - other comments — <one line>
 adrs:
   - <file> — <status> — <date> — <title> — affects: <Affects> — reason: <affects | newer than issue>
 in_flight:
