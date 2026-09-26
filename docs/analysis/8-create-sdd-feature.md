@@ -170,7 +170,7 @@ Deviation comments use the fixed heading `## Отклонение от подх�
 - **Input:** id, branch, base, path to the feature folder.
 - **Checks:** full project typecheck, lint and tests; every item of `validation.md` that can be automated; every `plan.md` group done and nothing extra; no violation of accepted ADRs.
 - **Output:** `VALIDATOR_RESULT`: `status: pass | fail`, list of checks with pass/fail and details, `manual:` items the agent cannot check.
-- **Boundaries:** never fixes anything. Reusable by `sdd-validate` (#13).
+- **Boundaries:** never fixes anything. (#13: release validation moved into `releaser`, which runs the project checks before the release PR; the separate validate command was removed.)
 
 #### `pr-opener`
 
@@ -289,4 +289,4 @@ Sub-issues of #8:
 - #21 templates: `specs/AGENT.md`, ADR, `plan.md`, `context.md`, `validation.md`
 - #9 rewrite the command, after the issues above
 
-Outside the epic: #13 (`sdd-validate`), #14 (`sdd-replan`).
+Outside the epic: #13 (release checks moved into `releaser`, the separate validate command removed), #14 (`sdd-replan`).

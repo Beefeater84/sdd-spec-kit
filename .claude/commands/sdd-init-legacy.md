@@ -8,7 +8,7 @@ Run this once per project. After this, use the standard SDD feature workflow.
 Read as many of these as exist:
 - `README.md` — project description, background
 - `TODO.md` or any open task lists
-- `package.json`, `pyproject.toml`, `go.mod`, or similar — tech stack and dependencies
+- `package.json`, `pyproject.toml`, `go.mod`, or similar — tech stack and dependencies; the install, typecheck, lint and test commands for `## Checks` in `specs/tech-stack.md`
 - Recent git log (`git log --oneline -20`) — history and direction
 - Any existing planning documents (issues exports, spreadsheets, Word docs the user can paste in)
 
@@ -67,6 +67,10 @@ Create three files. Fill them from what you discovered — do not leave placehol
 
 ## Key Flows
 <!-- Critical request pipelines or data flows discovered in the code -->
+
+## Checks
+<!-- Project checks run by the releaser and the validator: one command per line, in run order, outside this comment.
+     Fill from the project's scripts (package.json, Makefile, pyproject.toml), e.g. install, typecheck, lint, test. -->
 
 ## Smoke Tests
 <!-- Basic checks to verify the system works end-to-end -->

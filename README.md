@@ -16,7 +16,7 @@ The unit of delivery is an epic (or a single task without sub-issues): one branc
 | [`validator`](docs/agents/validator.md) | Independent check: typecheck, lint, tests, `validation.md`, plan coverage, ADRs. Never fixes. | sonnet |
 | [`pr-opener`](docs/agents/pr-opener.md) | Push, one PR into `release/*` listing the sub-issues; In review. | haiku |
 | [`feature-finisher`](docs/agents/feature-finisher.md) | After merge: closes delivered sub-issues, the epic once all are closed; Done; branch cleanup. | haiku |
-| [`releaser`](docs/agents/releaser.md) | Manual: release PR `release/X.Y.Z` → `main`, then tag, GitHub Release, next `release/*`. | haiku |
+| [`releaser`](docs/agents/releaser.md) | Manual: runs the project checks (`## Checks` in `specs/tech-stack.md`), release PR `release/X.Y.Z` → `main`, then tag, GitHub Release, next `release/*`. A failed check stops it; the calling session fixes it with you, then re-runs. Never fixes. | haiku |
 
 ## SKILLS
 
@@ -50,18 +50,6 @@ Delivers a GitHub issue (an epic or a single task) through the multi-agent SDD f
 It stops for you only at: a mismatch between the issue and later decisions, approach agreement, an implementer blocked after a retry, a decision that affects other tasks (ADR), validation failing after two rounds, PR review.
 
 **Requires:** `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md`; the agents in `.claude/agents/`. Design: `docs/analysis/8-create-sdd-feature.md`.
-
----
-
-### `/sdd-validate`
-
-Runs the validation phase after a feature is implemented.
-
-**Usage:** `/sdd-validate` or `/sdd-validate "feature-name"`
-
-Loads the feature spec, walks through the Validation Scorecard (automated + manual checks), reviews the commit diff, and ensures spec and code stay in sync. Marks the feature as `done` and updates the roadmap when all checks pass.
-
-**Requires:** a feature spec with a Validation Scorecard in `specs/features/`.
 
 ---
 
