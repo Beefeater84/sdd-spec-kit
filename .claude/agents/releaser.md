@@ -232,7 +232,7 @@ tail -n 40 "$LOG"
 ```
 
 - It prints `exit=0`: record `<name> — pass — <command>; ok` and go to the next command.
-- Anything else: the check failed. Record `<name> — fail — <command>; <failing file, test or rule from the output>; last lines: <the last 3 non-empty output lines joined with " | ">`. Record every command not run yet as `<name> — skipped — <command>; not run after a failure`. STOP with `reason: check <name> failed: <command>` and `hint: fix the failure on <release> with the calling session, then run releaser again`. Do not fix anything yourself. The release PR is not opened or updated.
+- Anything else: the check failed. Record `<name> — fail — <command>; <failing file, test or rule from the output>; last lines: <the last 3 non-empty output lines joined with " | ">`. Record every command not run yet as `<name> — skipped — <command>; not run after a failure`. STOP with `reason: <name> failed: <command>` and `hint: fix the failure on <release> with the calling session, then run releaser again`. Do not fix anything yourself. The release PR is not opened or updated.
 
 When every command has passed or been skipped, go to Step 6.
 

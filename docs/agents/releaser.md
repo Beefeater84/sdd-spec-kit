@@ -40,7 +40,7 @@ A run 1 stopped by a failed check:
 RELEASER_RESULT
 status: error
 version: 0.2.0
-reason: check check 3 failed: npm test
+reason: check 3 failed: npm test
 checks:
   - check 1 — pass — npm ci; ok
   - check 2 — pass — npm run lint; ok
