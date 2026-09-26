@@ -26,7 +26,7 @@ Bootstraps an SDD constitution for an existing (legacy) project. **Run once per 
 
 **Usage:** `/sdd-init-legacy`
 
-The skill explores the codebase autonomously — README, TODO, package files, git log, migrations — and reverse-engineers the three constitution files (`specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md`). It only asks the user for context it cannot discover itself (audience, hidden constraints, team direction). After review and commit, the project is on an SDD foundation and ready for the standard feature workflow.
+The skill explores the codebase autonomously — README, TODO, package files, git log, migrations — and reverse-engineers the constitution: `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md` and an empty `specs/decisions/`. It only asks the user for context it cannot discover itself (audience, hidden constraints, team direction). After review and commit, the project is on an SDD foundation and ready for the standard feature workflow.
 
 ---
 

@@ -24,7 +24,7 @@ After exploring, ask the user only what you could not determine from the code:
 
 ## Step 3 — Create the `specs/` Folder
 
-Create three files. Fill them from what you discovered — do not leave placeholders empty if the answer is already in the code.
+Create the `AGENT.md`, `mission.md` and `tech-stack.md` files, plus an empty `specs/decisions/` folder. Fill them from what you discovered — do not leave placeholders empty if the answer is already in the code.
 
 **`specs/mission.md`**
 ```markdown
@@ -79,39 +79,65 @@ Create three files. Fill them from what you discovered — do not leave placehol
 <!-- Technical constraints observed in the codebase -->
 ```
 
-**`specs/roadmap.md`**
+**`specs/AGENT.md`**
 ```markdown
-# Roadmap
+# Agent guide to `specs/`
 
-<!-- Derived from TODO, issues, git history, and user input. Living document — update after each feature. -->
+This file tells agents what to read in `specs/`. `README.md` files are for humans.
+Do not read the whole folder. Read the base set, then only what the task needs.
 
-## Phase 1: [Name]
-**Goal:**
-**Features:**
--
+## Always read
 
-## Phase 2: [Name]
-**Goal:**
-**Features:**
--
+- `mission.md` — what the project is and its business rules.
+- `tech-stack.md` — stack, infrastructure, constraints, code style.
+- Accepted decisions in `decisions/`. List them with:
+
+  ```bash
+  grep -rl --include='*.md' '^Status: accepted' specs/decisions/
+  ```
+
+  Read the title, `Affects` and `Decision` of each. Read the rest only if the task touches it.
+
+## Read by topic
+
+<!-- One row per doc area found in the project (modules, subsystems, docs folders). Keep the "When" column specific. -->
+
+| When the task touches | Read |
+|---|---|
+| <!-- e.g. billing --> | <!-- e.g. `specs/modules/billing.md` --> |
+
+## Feature folders
+
+`features/<id>-<slug>/` holds one task's `plan.md`, `context.md` and `validation.md`.
+Read only the folder of the current task. Read another one only when the task context points to it.
+
+## Where decisions go
+
+- Affects only the current task: a deviation comment in its GitHub issue.
+- Changes the approach for other tasks: an ADR in `decisions/<id>-<slug>.md`.
+- Never edit an accepted ADR. Write a new one and set the old one to `superseded by <file>`.
 ```
+
+Also create an empty `specs/decisions/` folder (e.g. with a `.gitkeep`) so accepted ADRs have somewhere to land.
 
 ## Step 4 — Review with the User
 
 Walk the user through each file. Ask:
 - Does this reflect the project's actual direction?
-- Are there roadmap items missing or in the wrong order?
+- Are the "Read by topic" rows in `AGENT.md` complete, and are the pointers correct?
 - Any decisions in the code that need a different explanation?
 
 Update based on their answers.
 
+Remind the user that tasks (epics, features, bugs) live in GitHub Issues and the project board, not in files in `specs/`.
+
 ## Step 5 — Commit
 
-Remind the user to commit the constitution on its own branch (e.g. `chore/sdd-init`) before merging to main.
+Remind the user to commit the constitution on its own branch (e.g. `chore/sdd-init`) and open a pull request into the project's working branch (e.g. the latest `release/*`).
 
 Specs are part of the versioning strategy — future changes to the constitution should be traceable in git history.
 
 ## Step 6 — What's Next
 
 Tell the user:
-> The project now has an SDD foundation. From here, use `/create-sdd-feature` to plan and implement the next roadmap item.
+> The project now has an SDD foundation. From here, use `/create-sdd-feature <issue>` to plan and implement the next task from the board.
