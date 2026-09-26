@@ -10,6 +10,7 @@ Design of this flow: `docs/analysis/8-create-sdd-feature.md`. Agents: `docs/agen
 - **Unit of delivery.** An epic is delivered in one pass: one branch `<type>/<epic>-<slug>`, one PR into `release/*`, one group in `plan.md` and one commit `<type>(#<sub-issue>): ...` per sub-issue. A task without sub-issues is a delivery of its own, grouped by code area, every commit `<type>(#<id>): ...`. A large epic is split into sequential deliveries: the next one starts only after the previous PR is merged. Never open parallel PRs within an epic.
 - **Branches.** Base and target are always the latest `release/*`. Never `main` or `master`.
 - **Autonomy.** Decide yourself and record the decision; the human reviews it in the PR. Stop only at the points in "Human stops".
+- **Naming tasks.** In stage reports, stops, the final report, issue comments and the PR description, name a task by a short meaning: `<short meaning> (#N)`, not a bare number (`agent.md`).
 - **GitHub.** Only you write comments and issue edits. Board statuses are set by `feature-starter`, `pr-opener` and `feature-finisher`.
 - **Production.** Never read `.env.prod` or production keys, never run `*:prod` scripts. Migrations are created, never applied.
 
@@ -23,6 +24,8 @@ Design of this flow: `docs/analysis/8-create-sdd-feature.md`. Agents: `docs/agen
 6. PR review and merge (after stage 9).
 
 At every other point go on without asking. When an agent returns `status: error`, show its `reason` and `hint` and stop: the human fixes the state and runs you again.
+
+Name tasks by meaning, not by a bare number, wherever you stop or report (see "Naming tasks" in Rules).
 
 ## Input
 
@@ -83,7 +86,8 @@ Write the draft in chat. Questions appear only where the context has real gaps.
 ## Подход к реализации
 
 ### Состав поставки
-<!-- Epic only: sub-issues in this delivery in order, and those left for later with the reason.
+<!-- Epic only: sub-issues in this delivery in order, and those left for later with the reason,
+     each named by meaning with the number in parentheses (see "Naming tasks" in Rules).
      Split into sequential deliveries when one PR would be too large to review. -->
 ### Что уже есть
 ### Как делаем
@@ -175,4 +179,4 @@ If `issue: kept_open`, the epic has sub-issues left: the next delivery is `/crea
 
 ## Final report
 
-At each stop and at the end, tell the human in a few lines: the stage, what was done, links (issue comments, PR), and what they need to do next.
+At each stop and at the end, tell the human in a few lines: the stage, what was done, links (issue comments, PR), and what they need to do next. Name tasks by meaning, not by a bare number (see "Naming tasks" in Rules).
