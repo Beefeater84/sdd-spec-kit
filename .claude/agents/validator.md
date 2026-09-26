@@ -34,7 +34,7 @@ Read `<folder>/plan.md` and `<folder>/validation.md`. If either is missing: `sta
 
 ## Step 2. Project checks
 
-Find the project's typecheck, lint and test commands: `<folder>/validation.md` → "Tools", then `specs/tech-stack.md`, then the package manifest (`package.json` scripts, `pyproject.toml`, `Makefile`). Run each for the **whole project**, not only changed files.
+Find the project's typecheck, lint and test commands: `<folder>/validation.md` → "Tools", then the `## Checks` section of `specs/tech-stack.md` (one command per line; text inside HTML comments is a placeholder), then the package manifest (`package.json` scripts, `pyproject.toml`, `Makefile`). Run each for the **whole project**, not only changed files.
 
 One `checks` line per command: `<name> — pass|fail|skipped — <command>; <short detail>`. For a failure, the detail names the failing file, test or rule. A kind of check the project does not have (e.g. no typecheck) is `skipped — not configured`.
 

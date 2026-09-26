@@ -19,6 +19,14 @@
 ## Code Style
 <!-- Link to the code style guide or linter config, and rules the linter does not enforce -->
 
+## Checks
+<!-- Project checks run by the releaser and the validator: one command per line, in run order, outside this comment.
+     Example:
+     npm ci
+     npm run typecheck
+     npm run lint
+     npm test -->
+
 ## Smoke Tests
 <!-- Basic checks to verify the system works end-to-end after setup -->
 
