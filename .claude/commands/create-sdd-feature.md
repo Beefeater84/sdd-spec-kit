@@ -50,7 +50,7 @@ If `specs/AGENT.md`, `mission.md` or `tech-stack.md` is missing, stop and sugges
 
 Run the `task-context` agent: `Task <id>`. Keep `TASK_CONTEXT_RESULT` as the task summary; do not query GitHub for what it already contains.
 
-**Relevance check.** Compare the issue body (and, for an epic, the bodies of open sub-issues) with what was decided after it was written: `adrs`, `in_flight`, siblings' `notes`, deviation and later comments. A mismatch is a decision that changes the scope or the approach of the task, e.g. "the issue says X, ADR `42-...` changed it".
+**Relevance check.** Compare the issue body (and, for an epic, the bodies of open sub-issues) with what was decided after it was written: `adrs`, `in_flight`, siblings' and `depends_on`'s `notes` and `decisions`, deviation and later comments. A mismatch is a decision that changes the scope or the approach of the task, e.g. "the issue says X, ADR `42-...` changed it".
 
 - No mismatch: go on.
 - A mismatch: **stop** and show it to the human: what the issue says, what changed it, and where. The human chooses:

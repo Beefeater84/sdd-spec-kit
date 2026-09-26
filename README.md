@@ -11,7 +11,7 @@ The unit of delivery is an epic (or a single task without sub-issues): one branc
 | Agent | Step | Model |
 |---|---|---|
 | [`feature-starter`](docs/agents/feature-starter.md) | Branch `<type>/<id>-<slug>` from the latest `release/*`; In progress for the issue and its sub-issues in the delivery. | haiku |
-| [`task-context`](docs/agents/task-context.md) | Compact summary of the task: issue, sub-issues, epic, siblings, ADRs, open PRs. Read-only. | haiku |
+| [`task-context`](docs/agents/task-context.md) | Compact summary of the task: issue, sub-issues, epic, siblings, dependencies, ADRs, open PRs. Read-only. | haiku |
 | [`implementer`](docs/agents/implementer.md) | Implements one `plan.md` group and commits it as `<type>(#<task>): ...`. | sonnet / opus |
 | [`validator`](docs/agents/validator.md) | Independent check: typecheck, lint, tests, `validation.md`, plan coverage, ADRs. Never fixes. | sonnet |
 | [`pr-opener`](docs/agents/pr-opener.md) | Push, one PR into `release/*` listing the sub-issues; In review. | haiku |

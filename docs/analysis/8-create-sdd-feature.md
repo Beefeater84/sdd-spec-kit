@@ -28,7 +28,7 @@ This document records the design agreed in the #8 discussion (summary comments, 
 /create-sdd-feature <issue#>
  1. feature-starter       (haiku)        branch <type>/<id>-<slug> from release/*, In progress
  2. base context          (orchestrator) specs/AGENT.md → mission, tech-stack, codestyle, ADRs
- 3. task-context          (haiku)        issue, epic, siblings, ADRs, open PRs of the epic
+ 3. task-context          (haiku)        issue, epic, siblings, dependencies, ADRs, open PRs of the epic
     relevance check       (orchestrator) mismatch → human
  4. code research         (Explore → code-scout if needed)
  5. approach agreement    (orchestrator + human) → issue comment "## Подход к реализации"
@@ -58,7 +58,7 @@ This document records the design agreed in the #8 discussion (summary comments, 
 
 **2. Base context.** The orchestrator reads a fixed base set, not the whole `specs/` folder (in real projects it holds all docs: modules, SEO, features). `specs/AGENT.md` lists what to read always (`mission.md`, `tech-stack.md`, codestyle link, the index of accepted ADRs) and what to read by topic. `README.md` stays for humans.
 
-**3a. Relevance check.** The orchestrator compares the issue with decisions made after it was created (ADRs, closed sibling tasks, approach and deviation comments of siblings). On a mismatch it shows it to the human: "the issue says X, ADR `42-...` changed it". The human chooses: update the issue (body + a comment about the scope change), split or close it, or go on as is.
+**3a. Relevance check.** The orchestrator compares the issue with decisions made after it was created (ADRs, closed sibling tasks, approach and deviation comments of siblings and dependencies). On a mismatch it shows it to the human: "the issue says X, ADR `42-...` changed it". The human chooses: update the issue (body + a comment about the scope change), split or close it, or go on as is.
 
 **4. Code research.** Runs after the relevance check, on the up-to-date task. It finds existing functionality: path — what it does — can it be reused. It exists because models often miss existing code and go the wrong way. First try the built-in `Explore` agent with a fixed prompt; build `code-scout` only if the result is unstable.
 
@@ -121,6 +121,7 @@ Deviation comments use the fixed heading `## Отклонение от подх�
   - issue: title, body, comments (summarized), approach and deviation comments if present, creation date;
   - epic: number, title, goal (or `-`);
   - siblings: number, title, state, merged PR;
+  - depends_on: tasks this one waits for (native "blocked by" and `Depends on` links in the body), with their state, PR and decisions;
   - adrs: accepted ADRs that list this issue or its modules in `Affects`, and ADRs created after the issue;
   - in_flight: open PRs of the same epic that add files under `specs/decisions/`.
 - **Boundaries:** collects and summarizes only. It does not judge relevance, does not edit issues, does not read code.
