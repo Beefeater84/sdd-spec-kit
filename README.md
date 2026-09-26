@@ -2,6 +2,120 @@
 
 Development standards, templates, and tools for project setup and feature delivery.
 
+## INSTALL
+
+The kit is installed into another repository by an agent. Open Claude Code in that repository and say:
+
+> Install the SDD kit from https://github.com/Beefeater84/sdd-spec-kit — follow the INSTALL section of its README.
+
+Add a ref (`v0.2.0`, `release/0.2.0`) to install a specific version. Say the same again later to update the kit.
+
+### Instructions for the agent
+
+You are in the target repository. Do the steps in order. Stop and ask the human only where a step says so. Never push to `main`/`master`, never force-push.
+
+**1. Check the environment.**
+
+- The current directory is a git repository with a GitHub `origin`: `gh repo view --json nameWithOwner,defaultBranchRef`.
+- `gh auth status` lists the `project` scope. If not, ask the human to run `gh auth refresh -s project` and wait.
+- The working tree is clean. If not, stop and ask.
+
+**2. Pick the version.**
+
+- The human named a ref: use it.
+- Otherwise the latest tag: `git ls-remote --tags --refs --sort=-v:refname https://github.com/Beefeater84/sdd-spec-kit 'v*' | head -1`.
+- No tags: `main`.
+
+**3. Download the kit** into a temporary folder outside the repository:
+
+```bash
+KIT=$(mktemp -d)/sdd-spec-kit
+git clone --quiet --filter=blob:none --branch <ref> https://github.com/Beefeater84/sdd-spec-kit "$KIT"
+KIT_SHA=$(git -C "$KIT" rev-parse HEAD)
+```
+
+**4. Create the branch.**
+
+- Find the latest release branch: `git fetch origin && git branch -r --list 'origin/release/*' --sort=-v:refname | head -1`.
+- None: stop. Propose to the human to create `release/0.1.0` from the default branch and push it; do it only after a yes.
+- Create `chore/install-sdd-kit` from it (with a task: `chore/<issue>-install-sdd-kit`).
+
+**5. Copy the kit files.** Only these three folders, file by file:
+
+| From the kit | To the target |
+|---|---|
+| `.claude/agents/*.md` | `.claude/agents/` |
+| `.claude/commands/*.md` | `.claude/commands/` |
+| `.claude/templates/sdd/*` | `.claude/templates/sdd/` |
+
+```bash
+mkdir -p .claude/agents .claude/commands .claude/templates/sdd
+cp "$KIT"/.claude/agents/*.md .claude/agents/
+cp "$KIT"/.claude/commands/*.md .claude/commands/
+cp "$KIT"/.claude/templates/sdd/* .claude/templates/sdd/
+```
+
+- Kit files overwrite files with the same name. Other files in these folders stay. Before copying, list target files that will be overwritten and are not from a previous install (no `.claude/sdd-kit-version`); name them in the report.
+- Never copy anything else from the kit: not `.claude/settings*.json`, `docs/`, `specs/`, `README.md`, `CLAUDE.md`, `agent.md`. Those describe the kit itself.
+- Update (`.claude/sdd-kit-version` exists): delete files the kit removed since the installed commit:
+
+  ```bash
+  OLD_SHA=$(sed -n 's/^commit: //p' .claude/sdd-kit-version)
+  git -C "$KIT" diff --name-only --diff-filter=D "$OLD_SHA" "$KIT_SHA" -- .claude/agents .claude/commands .claude/templates/sdd
+  ```
+
+  Delete the listed paths in the target. If `OLD_SHA` is unknown to the kit, skip this and say so in the report.
+- Write `.claude/sdd-kit-version`:
+
+  ```
+  source: https://github.com/Beefeater84/sdd-spec-kit
+  ref: <ref>
+  commit: <KIT_SHA>
+  ```
+
+**6. Check the task board.** The agents find the board through the project items of an issue, so issues must be on a GitHub Project (v2).
+
+- `gh project list --owner <owner>`. One project: use it. Several or none: ask the human which one (or to create one).
+- `gh project field-list <number> --owner <owner>` has a single-select `Status` with `Backlog`, `Ready`, `In progress`, `In review`, `Done`. Missing options: report them, do not edit the board.
+
+**7. Add the project rules** to the target's `CLAUDE.md` (create it if there is none; if it only imports another file with `@file`, edit that file). Add each section only if it is not there yet; fill in the owner, repository and project number:
+
+```markdown
+## Task tracking
+
+All tasks (epics, features, bugs) live in GitHub, not in files in this repo.
+
+- **Repository:** <owner>/<repo>
+- **Project board:** <owner>'s project number <number>
+- **Tasks:** GitHub Issues of this repository. The issue number is the task id and is used in every artifact (branch, plan, commits, PR).
+- **Epics:** issues with sub-issues. A feature is a sub-issue of its epic.
+
+Board fields: Status (Backlog, Ready, In progress, In review, Done), Priority (P0, P1, P2), Size (XS, S, M, L, XL).
+
+Use the `gh` CLI to read and update tasks, for example `gh issue view <n>` and `gh project item-list <number> --owner <owner>`.
+
+## Branching
+
+- Feature branches are created from the latest `release/*` branch in `origin` and merged back into it.
+- Never branch from or target `main` or `master`. They hold released code only.
+- Branch name: `<type>/<issue-number>-<short-description>`, where type is one of `feat`, `fix`, `docs`, `refactor`, `chore`.
+```
+
+**8. Commit and open the PR.**
+
+- One commit: `chore: install sdd-spec-kit <ref> (<short KIT_SHA>)` (`update` instead of `install` on an update).
+- Push the branch and open a PR into the release branch from step 4 with `gh pr create --base release/<x.y.z>`.
+- Remove the temporary folder.
+
+**9. Report to the human:**
+
+- the installed ref and commit, the PR link;
+- files overwritten or deleted, missing board options, anything skipped;
+- next steps:
+  1. Review and merge the PR, then restart Claude Code so the new agents and commands load.
+  2. If `specs/AGENT.md`, `specs/mission.md` or `specs/tech-stack.md` is missing, run `/sdd-init-legacy` once. It asks questions, so the human runs it, not you.
+  3. Deliver tasks with `/create-sdd-feature <issue#>`.
+
 ## AGENTS
 
 Sub-agents of the SDD multi-agent flow, in `.claude/agents/`. Each one has a page in `docs/agents/` with its input, behavior and output format.
