@@ -113,8 +113,8 @@ Read only the folder of the current task. Read another one only when the task co
 
 ## Where decisions go
 
-- Affects only the current task: a deviation comment in its GitHub issue.
-- Changes the approach for other tasks: an ADR in `decisions/<id>-<slug>.md`.
+- Affects only the current task: a deviation comment in its GitHub issue (`## Отклонение от подхода`).
+- Changes the approach for other tasks: an ADR in `decisions/<id>-<slug>.md` (template: `.claude/templates/sdd/adr.md`).
 - Never edit an accepted ADR. Write a new one and set the old one to `superseded by <file>`.
 ```
 
