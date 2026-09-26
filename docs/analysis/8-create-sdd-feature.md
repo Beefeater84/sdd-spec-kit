@@ -215,7 +215,7 @@ Affects: #<n>, #<m>; <modules>
 ```
 
 - An accepted ADR is never edited. A new decision is a new ADR; the old one only gets `superseded by`.
-- Staleness is always explicit. It is caught by `task-context`, PR review and `sdd-replan`.
+- Staleness is always explicit. It is caught by `task-context` and PR review.
 - Parallel features: an ADR lives in its branch until merge. Affected open tasks learn about it from a comment in their issue and from `task-context` (open PRs of the epic).
 - Local decisions (only this feature) are deviation comments in the issue, not ADRs.
 
@@ -290,4 +290,4 @@ Sub-issues of #8:
 - #21 templates: `specs/AGENT.md`, ADR, `plan.md`, `context.md`, `validation.md`
 - #9 rewrite the command, after the issues above
 
-Outside the epic: #13 (release checks moved into `releaser`, the separate validate command removed), #14 (`sdd-replan`).
+Outside the epic: #13 (release checks moved into `releaser`, the separate validate command removed), #14 (the replanning command was removed).

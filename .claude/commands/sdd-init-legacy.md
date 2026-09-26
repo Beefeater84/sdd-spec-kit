@@ -114,4 +114,4 @@ Specs are part of the versioning strategy — future changes to the constitution
 ## Step 6 — What's Next
 
 Tell the user:
-> The project now has an SDD foundation. From here, use `/create-sdd-feature` to plan and implement the next roadmap item. Allow time for replanning (`/sdd-replan`) after the first feature — you may find things to tune now that specs are in place.
+> The project now has an SDD foundation. From here, use `/create-sdd-feature` to plan and implement the next roadmap item.
