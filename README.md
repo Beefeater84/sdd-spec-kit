@@ -51,16 +51,6 @@ It stops for you only at: a mismatch between the issue and later decisions, appr
 
 **Requires:** `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md`; the agents in `.claude/agents/`. Design: `docs/analysis/8-create-sdd-feature.md`.
 
----
-
-### `/sdd-replan`
-
-Guides a replanning session between features.
-
-**Usage:** `/sdd-replan`
-
-Reviews product direction changes, propagates constitution updates to affected specs and code, and reassesses the roadmap. Small changes are applied immediately; large ones are scheduled as new roadmap features. Encourages working on a dedicated `replan/<topic>` branch to track which version of the constitution produced which code.
-
 ## TEMPLATES
 
 Artifacts of the multi-agent `create-sdd-feature` flow (design: `docs/analysis/8-create-sdd-feature.md`).
