@@ -21,7 +21,7 @@ Use the `gh` CLI to read and update tasks, for example `gh issue view <n>` and `
 
 ## Branching
 
-- Feature branches are created from the latest `release/*` branch in `origin` and merged back into it.
+- Permanent branch `staging`. Feature branches are created from `staging` in `origin` and merged back into it.
 - Never branch from or target `main` or `master`. They hold released code only.
 - Branch name: `<type>/<issue-number>-<short-description>`, where type is one of `feat`, `fix`, `docs`, `refactor`, `chore`.
 

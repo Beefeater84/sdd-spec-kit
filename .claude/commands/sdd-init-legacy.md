@@ -133,7 +133,7 @@ Remind the user that tasks (epics, features, bugs) live in GitHub Issues and the
 
 ## Step 5 — Commit
 
-Remind the user to commit the constitution on its own branch (e.g. `chore/sdd-init`) and open a pull request into the project's working branch (e.g. the latest `release/*`).
+Remind the user to commit the constitution on its own branch (e.g. `chore/sdd-init`) and open a pull request into the project's working branch (e.g. `staging`).
 
 Specs are part of the versioning strategy — future changes to the constitution should be traceable in git history.
 

@@ -1,6 +1,6 @@
 ---
 name: feature-finisher
-description: Last step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task) and its feature branch, after the feature PR is merged it marks the delivery done (closes the sub-issues delivered in the PR and the task itself, sets board Status to Done; an epic is closed only when all its sub-issues are closed), deletes the feature branch locally and in origin, and updates the local release/* branch to the latest version from origin. Safe to re-run. Returns a fixed-format result block. Does not run tests, merge, or release.
+description: Last step of the SDD multi-agent flow. Given a task id (GitHub issue number, an epic or a single task) and its feature branch, after the feature PR is merged it marks the delivery done (closes the sub-issues delivered in the PR and the task itself, sets board Status to Done; an epic is closed only when all its sub-issues are closed), deletes the feature branch locally and in origin, and fast-forwards the local permanent branch `staging` from origin. Safe to re-run. Returns a fixed-format result block. Does not run tests, merge, or release.
 tools: Bash
 model: haiku
 ---
@@ -14,11 +14,11 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 ## Hard rules
 
 - The only branch you may delete is the task branch from the input, and only after its PR is merged.
-- Never delete `main`, `master`, or any `release/*` branch.
+- Never delete `main`, `master`, or `staging`.
 - If the PR is not merged, change nothing: no issue close, no board change, no branch deletion.
 - Never close an epic while any of its sub-issues is open. Never close an issue that is not the task or one of its sub-issues.
 - Never delete a branch that has commits not in the merged PR. Keep it and report it.
-- Never force-push, never reset, never rewrite history. Update `release/*` by fast-forward only.
+- Never force-push, never reset, never rewrite history. Update `staging` by fast-forward only.
 - Re-running must be safe: anything already done is skipped, not redone.
 
 ## Input
@@ -182,29 +182,25 @@ Each line is `<item_id> <project_id> <field_id> <in_progress_option_id> <current
 - Leave every other status as it is.
 - Otherwise record `epic_board: in_progress` if you changed at least one line, else `epic_board: kept`.
 
-## Step 6. Update the local release branch
+## Step 6. Update the local staging branch
 
-Find the latest release in origin, by version:
+Check that the permanent branch `staging` exists in origin:
 
 ```bash
 git fetch origin --prune
-git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/release/*' \
-  | sed 's#^release/##' \
-  | grep -E '^v?[0-9]+(\.[0-9]+)*$' \
-  | sort -V \
-  | tail -n 1
+git rev-parse --verify -q refs/remotes/origin/staging
 ```
 
-`<release>` = `release/<output>`. If the output is empty, record `release: -`, `release_state: not_updated`, warning `no release/* branch in origin`, and go to Step 7.
+If it prints nothing, record `release: -`, `release_state: not_updated`, warning `no staging branch in origin`, and go to Step 7. Else record `release: staging`.
 
 Remember the local state before the update:
 
 ```bash
 git rev-parse --abbrev-ref HEAD
-git rev-parse --verify -q "refs/heads/<release>"
+git rev-parse --verify -q refs/heads/staging
 ```
 
-The first line is `<current>`. The second is `<before>` (empty if there is no local `<release>`).
+The first line is `<current>`. The second is `<before>` (empty if there is no local `staging`).
 
 Update it, depending on `<current>`:
 
@@ -217,29 +213,29 @@ Update it, depending on `<current>`:
   If this prints anything, do not switch. Record `release_state: not_updated` and warning `uncommitted changes on <branch>`, and go to Step 7. Else:
 
   ```bash
-  git switch "<release>"
-  git merge --ff-only "origin/<release>"
+  git switch staging
+  git merge --ff-only origin/staging
   ```
 
-- `<current>` is `<release>`:
+- `<current>` is `staging`:
 
   ```bash
-  git merge --ff-only "origin/<release>"
+  git merge --ff-only origin/staging
   ```
 
 - anything else (do not switch the user's branch):
 
   ```bash
-  git fetch origin "<release>:<release>"
+  git fetch origin staging:staging
   ```
 
-If the update command fails, record `release_state: not_updated` and warning `local <release> has commits not in origin, not updated`.
+If the update command fails, record `release_state: not_updated` and warning `local staging has commits not in origin, not updated`.
 
 Otherwise compare:
 
 ```bash
-git rev-parse "refs/heads/<release>"
-git rev-parse "origin/<release>"
+git rev-parse refs/heads/staging
+git rev-parse origin/staging
 ```
 
 If both are equal: `release_state: up_to_date` when `<before>` was the same hash, else `release_state: updated`.
