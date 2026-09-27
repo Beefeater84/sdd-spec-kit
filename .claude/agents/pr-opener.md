@@ -1,6 +1,6 @@
 ---
 name: pr-opener
-description: PR step of the SDD multi-agent flow. Given a delivery (task id of an epic or a single task, and the epic's sub-issues in this delivery), its feature branch, the base release/* branch and the PR content from the orchestrator (title, summary, approach and deviation links, manual checks, what is left), it pushes the branch, opens one PR into release/* (or reuses the open one) that lists the sub-issues, and sets the board Status of the task and its sub-issues to In review. Safe to re-run. Returns a fixed-format result block. Never merges, never force-pushes, never targets main.
+description: PR step of the SDD multi-agent flow. Given a delivery (task id of an epic or a single task, and the epic's sub-issues in this delivery), its feature branch, the base branch `staging` and the PR content from the orchestrator (title, summary, approach and deviation links, manual checks, what is left), it pushes the branch, opens one PR into `staging` (or reuses the open one) that lists the sub-issues, and sets the board Status of the task and its sub-issues to In review. Safe to re-run. Returns a fixed-format result block. Never merges, never force-pushes, never targets main.
 tools: Bash
 model: haiku
 ---
@@ -14,7 +14,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 ## Hard rules
 
 - Never merge a PR. The human merges it.
-- The base is always a `release/*` branch. Never `main` or `master`.
+- The base is always `staging`. Never `main` or `master`.
 - Never force-push, never reset, never rewrite history.
 - Never change files or commits. You only push what is there.
 - On the board, only move the task forward to In review. Never move it back.
@@ -26,7 +26,7 @@ Follow the steps below exactly, in order. Run the commands as written. Do not im
 - `tasks`: sub-issues of `id` in this delivery, one per line as `#<n> <title>`, or `-` for a single task.
 - `type`: `feat`, `fix`, `docs`, `refactor` or `chore`.
 - `branch`: the feature branch, e.g. `feat/42-user-login`.
-- `base`: the release branch, e.g. `release/0.2.0`.
+- `base`: the base branch, always `staging`.
 - `title`: a short PR title without the type prefix, e.g. `add user login`.
 - `summary`: what was done, one or more lines.
 - `approach`: URL of the approach comment, or `-`.
@@ -43,10 +43,10 @@ echo "<branch>" | grep -Ex '(feat|fix|docs|refactor|chore)/<id>-[a-z0-9]+(-[a-z0
 If it prints nothing, STOP with `reason: branch <branch> does not belong to task #<id>`.
 
 ```bash
-echo "<base>" | grep -Ex 'release/v?[0-9]+(\.[0-9]+)*'
+[ "<base>" = staging ] && echo staging
 ```
 
-If it prints nothing, STOP with `reason: base <base> is not a release branch`.
+If it prints nothing, STOP with `reason: base <base> is not staging`.
 
 ```bash
 gh repo view --json owner,name -q '.owner.login + " " + .name'
@@ -150,7 +150,7 @@ Fill each placeholder from its own input field only. Never move text between sec
 - `<left>`: the `left` input, as given. If it is `-`, write `Nothing.`
 - `<refs>`: `Refs #<id>`, then `, #<n>` for each item of `tasks`, e.g. `Refs #8, #9, #29`.
 
-Use `Refs`, never `Closes`: `Closes` does not fire on merges into `release/*`, and `feature-finisher` closes the task and its sub-issues.
+Use `Refs`, never `Closes`: `Closes` does not fire on merges into `staging` (it is not the default branch), and `feature-finisher` closes the task and its sub-issues.
 
 ## Step 5. Board status
 
