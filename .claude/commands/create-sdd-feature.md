@@ -7,8 +7,8 @@ Design of this flow: `docs/analysis/8-create-sdd-feature.md`. Agents: `docs/agen
 ## Rules
 
 - **The issue is the source of truth** for what the task is. There is no roadmap file.
-- **Unit of delivery.** An epic is delivered in one pass: one branch `<type>/<epic>-<slug>`, one PR into `release/*`, one group in `plan.md` and one commit `<type>(#<sub-issue>): ...` per sub-issue. A task without sub-issues is a delivery of its own, grouped by code area, every commit `<type>(#<id>): ...`. A large epic is split into sequential deliveries: the next one starts only after the previous PR is merged. Never open parallel PRs within an epic.
-- **Branches.** Base and target are always the latest `release/*`. Never `main` or `master`.
+- **Unit of delivery.** An epic is delivered in one pass: one branch `<type>/<epic>-<slug>`, one PR into `staging`, one group in `plan.md` and one commit `<type>(#<sub-issue>): ...` per sub-issue. A task without sub-issues is a delivery of its own, grouped by code area, every commit `<type>(#<id>): ...`. A large epic is split into sequential deliveries: the next one starts only after the previous PR is merged. Never open parallel PRs within an epic.
+- **Branches.** Base and target are always `staging`. Never `main` or `master`.
 - **Autonomy.** Decide yourself and record the decision; the human reviews it in the PR. Stop only at the points in "Human stops".
 - **Naming tasks.** In stage reports, stops, the final report, issue comments and the PR description, name a task by a short meaning: `<short meaning> (#N)`, not a bare number. Numbers stay bare in branch names, commit messages, agent briefings and result blocks, and `gh` commands.
 - **GitHub.** Only you write comments and issue edits. Board statuses are set by `feature-starter`, `pr-opener` and `feature-finisher`.
