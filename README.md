@@ -2,6 +2,138 @@
 
 Development standards, templates, and tools for project setup and feature delivery.
 
+## INSTALL
+
+The kit is installed into another repository by an agent. Open Claude Code in that repository and say:
+
+> Install the SDD kit from https://github.com/Beefeater84/sdd-spec-kit — follow the INSTALL section of its README.
+
+Add a ref (`v0.2.0`, or `staging` for unreleased code) to install a specific version. Say the same again later to update the kit.
+
+### Instructions for the agent
+
+You are in the target repository. Do the steps in order. Stop and ask the human only where a step says so. Never push to `main`/`master`, never force-push.
+
+**1. Check the environment.**
+
+- The current directory is a git repository with a GitHub `origin`: `gh repo view --json nameWithOwner,defaultBranchRef`.
+- `gh auth status` lists the `project` scope. If not, ask the human to run `gh auth refresh -s project` and wait.
+- The working tree is clean. If not, stop and ask.
+
+**2. Pick the version.**
+
+- The human named a ref: use it.
+- Otherwise the latest tag: `git ls-remote --tags --refs --sort=-v:refname https://github.com/Beefeater84/sdd-spec-kit 'v*' | head -1`.
+- No tags: `main`.
+
+**3. Download the kit** into a temporary folder outside the repository:
+
+```bash
+KIT=$(mktemp -d)/sdd-spec-kit
+git clone --quiet --filter=blob:none --branch <ref> https://github.com/Beefeater84/sdd-spec-kit "$KIT"
+KIT_SHA=$(git -C "$KIT" rev-parse HEAD)
+```
+
+**4. Create the branch.**
+
+- `git fetch origin`.
+- `origin/staging` exists: use it.
+- Only `origin/release/*` branches exist (`git branch -r --list 'origin/release/*' --sort=-v:refname | head -1`): stop. Propose to the human to migrate: create `staging` from the latest `release/*` (`git push origin origin/release/<x.y.z>:refs/heads/staging`), retarget open PRs onto it (`gh pr edit <n> --base staging` for each), reconnect preprod to `staging`, and later delete the old `release/*` branches. Do it only after a yes.
+- Neither exists: stop. Propose to the human to create `staging` from the default branch and push it. Do it only after a yes.
+- Create `chore/install-sdd-kit` from `origin/staging` (with a task: `chore/<issue>-install-sdd-kit`).
+
+**5. Copy the kit files.** Only these three folders, file by file:
+
+| From the kit | To the target |
+|---|---|
+| `.claude/agents/*.md` | `.claude/agents/` |
+| `.claude/commands/*.md` | `.claude/commands/` |
+| `.claude/templates/sdd/*` | `.claude/templates/sdd/` |
+
+```bash
+mkdir -p .claude/agents .claude/commands .claude/templates/sdd
+cp "$KIT"/.claude/agents/*.md .claude/agents/
+cp "$KIT"/.claude/commands/*.md .claude/commands/
+cp "$KIT"/.claude/templates/sdd/* .claude/templates/sdd/
+```
+
+- Kit files overwrite files with the same name. Other files in these folders stay. Before copying, list target files that will be overwritten and are not from a previous install (no `.claude/sdd-kit-version`); name them in the report.
+- Never copy anything else from the kit: not `.claude/settings*.json`, `docs/`, `specs/`, `README.md`, `CLAUDE.md`, `agent.md`. Those describe the kit itself.
+- Update (`.claude/sdd-kit-version` exists): delete files the kit removed since the installed commit:
+
+  ```bash
+  OLD_SHA=$(sed -n 's/^commit: //p' .claude/sdd-kit-version)
+  git -C "$KIT" diff --name-only --diff-filter=D "$OLD_SHA" "$KIT_SHA" -- .claude/agents .claude/commands .claude/templates/sdd
+  ```
+
+  Delete the listed paths in the target. If `OLD_SHA` is unknown to the kit, skip this and say so in the report.
+- Write `.claude/sdd-kit-version`:
+
+  ```
+  source: https://github.com/Beefeater84/sdd-spec-kit
+  ref: <ref>
+  commit: <KIT_SHA>
+  ```
+
+**6. Check the task board.** The agents find the board through the project items of an issue, so issues must be on a GitHub Project (v2).
+
+- `gh project list --owner <owner>`. One project: use it. Several or none: ask the human which one (or to create one).
+- `gh project field-list <number> --owner <owner>` has a single-select `Status` with `Backlog`, `Ready`, `In progress`, `In review`, `Done`. Missing options: report them, do not edit the board.
+
+**7. Add the project rules** to the target's `CLAUDE.md` (create it if there is none; if it only imports another file with `@file`, edit that file). Add each section only if it is not there yet; fill in the owner, repository and project number. Exception: if the target's Branching section still mentions `release/*`, replace it with the block below instead of skipping it.
+
+```markdown
+## Task tracking
+
+All tasks (epics, features, bugs) live in GitHub, not in files in this repo.
+
+- **Repository:** <owner>/<repo>
+- **Project board:** <owner>'s project number <number>
+- **Tasks:** GitHub Issues of this repository. The issue number is the task id and is used in every artifact (branch, plan, commits, PR).
+- **Epics:** issues with sub-issues. A feature is a sub-issue of its epic.
+
+Board fields: Status (Backlog, Ready, In progress, In review, Done), Priority (P0, P1, P2), Size (XS, S, M, L, XL).
+
+Use the `gh` CLI to read and update tasks, for example `gh issue view <n>` and `gh project item-list <number> --owner <owner>`.
+
+## Branching
+
+- Permanent branch `staging`. Feature branches are created from `staging` in `origin` and merged back into it.
+- Never branch from or target `main` or `master`. They hold released code only.
+- Branch name: `<type>/<issue-number>-<short-description>`, where type is one of `feat`, `fix`, `docs`, `refactor`, `chore`.
+```
+
+**8. Commit and open the PR.**
+
+- One commit: `chore: install sdd-spec-kit <ref> (<short KIT_SHA>)` (`update` instead of `install` on an update).
+- Push the branch and open a PR into `staging` with `gh pr create --base staging`.
+- Remove the temporary folder.
+
+**9. Report to the human:**
+
+- the installed ref and commit, the PR link;
+- files overwritten or deleted, missing board options, anything skipped;
+- next steps:
+  1. Review and merge the PR, then restart Claude Code so the new agents and commands load.
+  2. If `specs/AGENT.md`, `specs/mission.md` or `specs/tech-stack.md` is missing, run `/sdd-init-legacy` once. It asks questions, so the human runs it, not you.
+  3. Deliver tasks with `/create-sdd-feature <issue#>`.
+
+## AGENTS
+
+Sub-agents of the SDD multi-agent flow, in `.claude/agents/`. Each one has a page in `docs/agents/` with its input, behavior and output format.
+
+The unit of delivery is an epic (or a single task without sub-issues): one branch `<type>/<epic>-<slug>`, one PR into `staging`, one commit `<type>(#<sub-issue>): ...` per sub-issue. Sub-issues stay on the board for tracking and deviation comments. A large epic goes as several sequential deliveries.
+
+| Agent | Step | Model |
+|---|---|---|
+| [`feature-starter`](docs/agents/feature-starter.md) | Branch `<type>/<id>-<slug>` from `staging`; In progress for the issue and its sub-issues in the delivery. | haiku |
+| [`task-context`](docs/agents/task-context.md) | Compact summary of the task: issue, sub-issues, epic, siblings, dependencies, ADRs, open PRs. Read-only. | haiku |
+| [`implementer`](docs/agents/implementer.md) | Implements one `plan.md` group and commits it as `<type>(#<task>): ...`. | sonnet / opus |
+| [`validator`](docs/agents/validator.md) | Independent check: typecheck, lint, tests, `validation.md`, plan coverage, ADRs. Never fixes. | sonnet |
+| [`pr-opener`](docs/agents/pr-opener.md) | Push, one PR into `staging` listing the sub-issues; In review. | haiku |
+| [`feature-finisher`](docs/agents/feature-finisher.md) | After merge: closes delivered sub-issues, the epic once all are closed; Done; branch cleanup. | haiku |
+| [`releaser`](docs/agents/releaser.md) | Manual: runs the project checks (`## Checks` in `specs/tech-stack.md`), release PR `staging` → `main` (version = latest tag + bump), then tag, GitHub Release. A failed check stops it; the calling session fixes it with you, then re-runs. Never fixes. | haiku |
+
 ## SKILLS
 
 ### `/sdd-init-legacy`
@@ -10,42 +142,39 @@ Bootstraps an SDD constitution for an existing (legacy) project. **Run once per 
 
 **Usage:** `/sdd-init-legacy`
 
-The skill explores the codebase autonomously — README, TODO, package files, git log, migrations — and reverse-engineers the three constitution files (`specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md`). It only asks the user for context it cannot discover itself (audience, hidden constraints, team direction). After review and commit, the project is on an SDD foundation and ready for the standard feature workflow.
+The skill explores the codebase autonomously — README, TODO, package files, git log, migrations — and reverse-engineers the constitution: `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md` and an empty `specs/decisions/`. It only asks the user for context it cannot discover itself (audience, hidden constraints, team direction). After review and commit, the project is on an SDD foundation and ready for the standard feature workflow.
 
 ---
 
 ### `/create-sdd-feature`
 
-Creates a feature spec file following the Spec-Driven Development (SDD) workflow.
+Delivers a GitHub issue (an epic or a single task) through the multi-agent SDD flow. The main agent is the orchestrator: it gathers context, agrees the approach with you, writes the plan and runs the agents; it never writes code itself.
 
-**Usage:** `/create-sdd-feature` or `/create-sdd-feature "feature name"`
+**Usage:** `/create-sdd-feature <issue#>` or `/create-sdd-feature <epic#> <sub-issue#> ...` (limit the delivery to these sub-issues).
 
-The skill reads the project constitution (`specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md`), identifies the target feature, and generates a structured spec file at `specs/features/<feature-name>.md`.
+1. `feature-starter` — branch `<type>/<id>-<slug>` from `staging`, In progress.
+2. Base context from `specs/AGENT.md`: mission, tech stack, accepted ADRs.
+3. `task-context` — task summary; relevance check against later decisions.
+4. Code research with `Explore`.
+5. Approach agreement with you → issue comment `## Подход к реализации`.
+6. Plan: `specs/features/<id>-<slug>/` with `plan.md`, `context.md`, `validation.md`, first commit.
+7. `implementer` per group → one commit per sub-issue; deviations → issue comments `## Отклонение от подхода`.
+8. `validator` — up to two fix rounds.
+9. `pr-opener` — one PR into `staging`, In review.
+10. After you merge: `feature-finisher` — closes the sub-issues, the epic once all are closed, cleans up.
 
-The spec includes: Goal, Requirements, Task Groups, Key Decisions, and a Validation Scorecard.
+It stops for you only at: a mismatch between the issue and later decisions, approach agreement, an implementer blocked after a retry, a decision that affects other tasks (ADR), validation failing after two rounds, PR review.
 
-After spec approval, the skill outputs a ready-to-use implementation prompt and guides the developer through the validation phase — keeping spec and code in sync before merging.
+**Requires:** `specs/AGENT.md`, `specs/mission.md`, `specs/tech-stack.md`; the agents in `.claude/agents/`. Design: `docs/analysis/8-create-sdd-feature.md`.
 
-**Requires:** a filled-in project constitution in `specs/`.
+## TEMPLATES
 
----
+Artifacts of the multi-agent `create-sdd-feature` flow (design: `docs/analysis/8-create-sdd-feature.md`).
 
-### `/sdd-validate`
+- `specs/AGENT.md` — a project file, filled in like `mission.md`. Tells agents what to read in `specs/` always (mission, tech stack, accepted decisions) and what by topic, and where decisions go.
+- `.claude/templates/sdd/adr.md` — a cross-cutting decision, saved as `specs/decisions/<id>-<slug>.md`. Accepted ADRs are never edited; a new one supersedes the old.
+- `.claude/templates/sdd/plan.md` — the plan of one task, for the human: task groups with goal, files, reuse and done-when. No code.
+- `.claude/templates/sdd/context.md` — the code map of one task, for agents: paths, symbols, patterns.
+- `.claude/templates/sdd/validation.md` — the validator's checklist: automated and manual checks.
 
-Runs the validation phase after a feature is implemented.
-
-**Usage:** `/sdd-validate` or `/sdd-validate "feature-name"`
-
-Loads the feature spec, walks through the Validation Scorecard (automated + manual checks), reviews the commit diff, and ensures spec and code stay in sync. Marks the feature as `done` and updates the roadmap when all checks pass.
-
-**Requires:** a feature spec with a Validation Scorecard in `specs/features/`.
-
----
-
-### `/sdd-replan`
-
-Guides a replanning session between features.
-
-**Usage:** `/sdd-replan`
-
-Reviews product direction changes, propagates constitution updates to affected specs and code, and reassesses the roadmap. Small changes are applied immediately; large ones are scheduled as new roadmap features. Encourages working on a dedicated `replan/<topic>` branch to track which version of the constitution produced which code.
+A task's files live in `specs/features/<id>-<slug>/`.
