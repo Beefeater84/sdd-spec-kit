@@ -2,6 +2,10 @@
 
 Development standards, templates, and tools for project setup and feature delivery.
 
+![Feature creation process: the agents of the SDD flow, their models and where the human steps in](specs/sdd-schema.png)
+
+Source of the diagram: [`specs/SSD-description.excalidraw`](specs/SSD-description.excalidraw). Open it in Excalidraw, edit, and export it again as `specs/sdd-schema.png`.
+
 ## INSTALL
 
 The kit is installed into another repository by an agent. Open Claude Code in that repository and say:
