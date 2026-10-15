@@ -4,6 +4,8 @@ Development standards, templates, and tools for project setup and feature delive
 
 ![Feature creation process: the agents of the SDD flow, their models and where the human steps in](specs/sdd-schema.png)
 
+**[Open the diagram in Excalidraw](https://link.excalidraw.com/l/4fuBV9gHb6h/1Yv9lzwyXJp)** to zoom and pan, or click the image for the full-size PNG.
+
 Source of the diagram: [`specs/SSD-description.excalidraw`](specs/SSD-description.excalidraw). Open it in Excalidraw, edit, and export it again as `specs/sdd-schema.png`.
 
 ## INSTALL
