@@ -9,9 +9,12 @@ Affects: #43; releaser, feature-starter, feature-finisher, pr-opener, validator,
 
 The kit used a versioned `release/X.Y.Z` branch as the base and target of every feature branch and PR. Each release moved to a new `release/*` branch (`releaser` created the next one from `main` after tagging), which forced preprod to reconnect to a new branch after every release, and required agents to look up "the latest `release/*`" everywhere a base or target branch was needed.
 
+The kit targets projects deployed to Vercel. Vercel builds a preview for every branch, but each branch gets its own URL, which appears with the branch and goes away with it. Many things can only be checked on a real site with a known address: payments, sign-in (OAuth redirect URLs, cookie domains), webhooks, and testing from a phone. They need the address registered in third-party services and environment variables set for it in Vercel, which cannot be redone for every branch.
+
 ## Decision
 
 - One permanent branch `staging` replaces versioned `release/*`. Feature branches are created from `staging` in `origin` and merged back into it. Never branch from or target `main`/`master` — they hold released code only. Preprod deploys from `staging` and is never reconnected.
+- Why the name and why permanent: on Vercel, `staging` is the one preview branch with a fixed URL that never changes. That URL is set up once: environment variables in Vercel for the `staging` preview, and the address registered where a confirmed address is required (payment providers, OAuth apps, webhooks). Features that need a real address (payments, sign-in, checks from a phone) are checked on the `staging` URL after their PR is merged into `staging`, before the release PR into `main`.
 - Released versions are tags, not branches: `releaser` tags `vX.Y.Z` on the release PR's merge commit in `main` and publishes a GitHub Release with notes. The version is decided at release time: latest `v*` tag + bump (`major` / `minor` default / `patch`), or an explicit `X.Y.Z`; no tags yet → `0.1.0`. No `VERSION` file, no milestone. While a release is being prepared, the version is visible in the open PR `Release vX.Y.Z` from `staging` into `main`.
 - Release notes are limited to PRs whose merge commit is in `origin/main..origin/staging` (i.e. only what actually shipped since the last release), and the release PR itself is merged with a merge commit so that range stays accurate.
 - Kit install: the default install target is the latest tag; for unreleased code, the ref is `staging` (instead of `release/0.2.0`).
@@ -26,6 +29,7 @@ The kit used a versioned `release/X.Y.Z` branch as the base and target of every 
 
 - No release branches are created or deleted anymore; the branch name (`staging`) is fixed in the kit. A project-level override of this name may come with a later task (#43).
 - Preprod is connected to `staging` once and stays connected across releases.
+- Renaming `staging` means redoing the Vercel and third-party setup for the new URL. Feature-branch previews stay useful for UI checks, but not for checks that need a confirmed address.
 - `releaser`, `feature-starter`, `feature-finisher`, `pr-opener` and `validator` all use `staging` as the fixed base/target instead of resolving "the latest `release/*`".
 - Hotfixes committed directly into `main` (bypassing `staging`) are outside this scheme; the kit does not cover them.
 - Existing projects on the kit must migrate once, as described above; until they do, their agents keep working against `release/*` per their installed version.
