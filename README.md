@@ -2,6 +2,13 @@
 
 Development standards, templates, and tools for project setup and feature delivery.
 
+## Who it is for
+
+Developers whose project:
+
+- lives in a GitHub repository, with its keys and secrets kept in GitHub;
+- is deployed to Vercel.
+
 ![Feature creation process: the agents of the SDD flow, their models and where the human steps in](specs/sdd-schema.png)
 
 **[Open the diagram in Excalidraw](https://link.excalidraw.com/l/4fuBV9gHb6h/1Yv9lzwyXJp)** to zoom and pan, or click the image to open it full-size.
