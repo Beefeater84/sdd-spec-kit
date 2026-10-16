@@ -2,6 +2,19 @@
 
 Development standards, templates, and tools for project setup and feature delivery.
 
+## Who it is for
+
+Developers whose project:
+
+- lives in a GitHub repository, with its keys and secrets kept in GitHub;
+- is deployed to Vercel.
+
+## Goals
+
+1. **Spend fewer tokens.** Simple deterministic steps (branches, board updates, PRs, releases) run on the smallest models; larger models are kept for specs, planning, and code.
+2. **One fixed workflow.** Nothing is committed to `main`/`master` directly: every change goes through a feature branch, a PR into `staging`, and a release PR into `main`.
+3. **The same approach in every project.** All our applications are set up and developed the same deterministic way, with the same agents, templates, and steps.
+
 ![Feature creation process: the agents of the SDD flow, their models and where the human steps in](specs/sdd-schema.png)
 
 **[Open the diagram in Excalidraw](https://link.excalidraw.com/l/4fuBV9gHb6h/9nMDTkzEdi5)** to zoom and pan, or click the image to open it full-size.
