@@ -24,3 +24,4 @@
 - English, plain short sentences.
 
 ## Gaps found during implementation
+- `grep -w main` also matches the `<main>` placeholder; replace `<main>` before grepping for hardcoded `main`.
