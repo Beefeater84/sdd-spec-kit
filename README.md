@@ -12,7 +12,7 @@ Developers whose project:
 ## Goals
 
 1. **Spend fewer tokens.** Simple deterministic steps (branches, board updates, PRs, releases) run on the smallest models; larger models are kept for specs, planning, and code.
-2. **One fixed workflow.** Nothing is committed to `main`/`master` directly: every change goes through a feature branch, a PR into `staging`, and a release PR into `main`.
+2. **One fixed workflow.** Nothing is committed to `main`/`master` directly: every change goes through a feature branch, a PR into `staging`, and a release PR into the default branch (`main` or `master`).
 3. **The same approach in every project.** All our applications are set up and developed the same deterministic way, with the same agents, templates, and steps.
 
 ![Feature creation process: the agents of the SDD flow, their models and where the human steps in](specs/sdd-schema.png)
@@ -151,7 +151,7 @@ The unit of delivery is an epic (or a single task without sub-issues): one branc
 | [`validator`](docs/agents/validator.md) | Independent check: typecheck, lint, tests, `validation.md`, plan coverage, ADRs. Never fixes. | sonnet |
 | [`pr-opener`](docs/agents/pr-opener.md) | Push, one PR into `staging` listing the sub-issues; In review. | haiku |
 | [`feature-finisher`](docs/agents/feature-finisher.md) | After merge: closes delivered sub-issues, the epic once all are closed; Done; branch cleanup. | haiku |
-| [`releaser`](docs/agents/releaser.md) | Manual: runs the project checks (`## Checks` in `specs/tech-stack.md`), release PR `staging` → `main` (version = latest tag + bump), then tag, GitHub Release. A failed check stops it; the calling session fixes it with you, then re-runs. Never fixes. | haiku |
+| [`releaser`](docs/agents/releaser.md) | Manual: runs the project checks (`## Checks` in `specs/tech-stack.md`), release PR `staging` → the default branch (`main` or `master`; version = latest tag + bump), then tag, GitHub Release. A failed check stops it; the calling session fixes it with you, then re-runs. Never fixes. | haiku |
 
 ## SKILLS
 
